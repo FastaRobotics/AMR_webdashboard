@@ -46,5 +46,26 @@ async def publish_twist(req: TwistMessageRequest):
     return {"status": "published", "topic": topic, "type": msg_type, "message": twist_msg}
 
 @app.post("/publish/pose")
-async def publish_pose(req):
-    pass
+async def publish_pose(req: PoseMessageRequest):
+    topic = req.topic
+    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Pose")
+
+    if topic not in publishers:
+        publishers[topic] = RosPublisher(topic_name=topic, message_type=msg_type)
+
+    pose_msg = {
+        "position": req.position,
+        "orientation": req.orientation
+    }
+
+    try:
+        publishers[topic].publish_once(pose_msg)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": "published",
+        "topic": topic,
+        "type": msg_type,
+        "message": pose_msg
+    }
