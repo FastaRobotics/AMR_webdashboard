@@ -11,6 +11,17 @@ from msgs.Pose import PoseMessageRequest
 from msgs.Odom import OdomMessageRequest 
 from msgs.Transformation import TfMessageRequest
 
+from roslibpy import Ros
+
+# Create ONE shared connection instance
+ros = Ros(host='192.168.0.224', port=9090)
+ros.run()
+
+if not ros.is_connected:
+    raise Exception("[ROS Bridge] Failed to connect to ROS bridge")
+
+print("[ROS Bridge] Connected to ROS at ws://192.168.0.224:9090")
+
 publishers = {}
 subscribers = {}
 app = FastAPI()
@@ -22,10 +33,11 @@ async def publish_string(req: StringMessageRequest):
     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "std_msgs/String")
 
     if topic not in publishers:
-        publishers[topic] = RosPublisher(topic_name=topic, message_type=msg_type)
+        publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
 
     try:
         publishers[topic].publish_once({"data": req.data})
+        publishers[topic].close()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -41,7 +53,7 @@ async def publish_twist(req: TwistMessageRequest):
     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Twist")
 
     if topic not in publishers:
-        publishers[topic] = RosPublisher(topic_name=topic, message_type=msg_type)
+        publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
 
     twist_msg = {
         "linear": req.linear,
@@ -50,6 +62,8 @@ async def publish_twist(req: TwistMessageRequest):
 
     try:
         publishers[topic].publish_once(twist_msg)
+        publishers[topic].close()
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -64,7 +78,7 @@ async def publish_pose(req: PoseMessageRequest):
     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Pose")
 
     if topic not in publishers:
-        publishers[topic] = RosPublisher(topic_name=topic, message_type=msg_type)
+        publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
 
     pose_msg = {
         "position": req.position,
@@ -73,6 +87,8 @@ async def publish_pose(req: PoseMessageRequest):
 
     try:
         publishers[topic].publish_once(pose_msg)
+        publishers[topic].close()
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -90,12 +106,13 @@ async def get_odom(req: OdomMessageRequest):
     msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "nav_msgs/Odometry")
 
     if topic not in subscribers:
-        subscriber = RosSubscriber(topic_name=topic, message_type=msg_type)
+        subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
         subscriber.subscribe()
         subscribers[topic] = subscriber
 
     try:
         odom_msg = subscribers[topic].get_last_message()
+        subscribers[topic].unsubscribe()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -108,17 +125,18 @@ async def get_odom(req: OdomMessageRequest):
     }
 
 @app.post("/subscribe/tf")
-async def get_odom(req: TfMessageRequest):
+async def get_tf(req: TfMessageRequest):
     topic = req.topic
     msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "tf2_msgs/TFMessage")
 
     if topic not in subscribers:
-        subscriber = RosSubscriber(topic_name=topic, message_type=msg_type)
+        subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
         subscriber.subscribe()
         subscribers[topic] = subscriber
 
     try:
         odom_msg = subscribers[topic].get_last_message()
+        subscribers[topic].unsubscribe()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -129,3 +147,4 @@ async def get_odom(req: TfMessageRequest):
         "type": msg_type,
         "message": odom_msg
     }
+

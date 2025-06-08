@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from publisher_available import AvailableTopics
+from ros_bridge.publisher_available import AvailableTopics 
 from typing import Optional, Dict
 
 

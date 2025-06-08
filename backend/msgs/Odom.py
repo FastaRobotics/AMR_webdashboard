@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, Dict
-from subscriber_available import SubscribableTopics 
+from ros_bridge.subscriber_available import SubscribableTopics 
 
 
 class OdomMessageRequest(BaseModel):

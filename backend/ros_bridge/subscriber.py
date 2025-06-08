@@ -2,13 +2,8 @@ from roslibpy import Ros, Topic
 
 
 class RosSubscriber:
-    def __init__(self, host='localhost', port=9090, topic_name='/chatter', message_type='std_msgs/String'):
-        self.ros = Ros(host=host, port=port)
-        self.ros.run()
-        if not self.ros.is_connected:
-            raise Exception("Failed to connect to ROS.")
-        print(f"[RosSubscriber] Connected to ROS at ws://{host}:{port}")
-        
+    def __init__(self, ros, host='localhost', port=9090, topic_name='/chatter', message_type='std_msgs/String'):
+        self.ros = ros
         self.topic = Topic(self.ros, topic_name, message_type)
         self.last_message = None
         self.subscribed = False
@@ -30,4 +25,3 @@ class RosSubscriber:
             self.topic.unsubscribe()
             self.subscribed = False
             print(f"[RosSubscriber] Unsubscribed from {self.topic.name}")
-        self.ros.terminate()
