@@ -112,7 +112,7 @@ async def get_odom(req: OdomMessageRequest):
 
     try:
         odom_msg = subscribers[topic].get_last_message()
-        subscribers[topic].unsubscribe()
+        # subscribers[topic].unsubscribe()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -136,7 +136,7 @@ async def get_tf(req: TfMessageRequest):
 
     try:
         odom_msg = subscribers[topic].get_last_message()
-        subscribers[topic].unsubscribe()
+        # subscribers[topic].unsubscribe()
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

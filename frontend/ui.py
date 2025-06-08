@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import time
+import streamlit.components.v1 as components
 
 FASTAPI_URL = "http://192.168.0.224:8000"  # Update with your Jetson IP
 
@@ -21,7 +22,7 @@ with st.expander("📍 Odometry Viewer", expanded=True):
     if enable_odom:
         while enable_odom:
             try:
-                res = requests.post(f"{FASTAPI_URL}/subscribe/odom", json={"topic": odom_topic})
+                res = requests.post(f"{FASTAPI_URL}/subscribe/odom", json={})
                 odom_data = res.json()["message"]
                 odom_slot.json(odom_data)
             except Exception as e:
@@ -96,3 +97,5 @@ with st.expander("🧭 TF Viewer", expanded=False):
 # --- Status Info ---
 with st.expander("🔍 System Status", expanded=False):
     st.markdown("*(Add your custom ROS status endpoints here, e.g., `/status/battery` or `/status/map`)*")
+
+
