@@ -21,7 +21,6 @@ class RosSubscriber:
 
     def _update_message(self, message):
         self.last_message = message
-        print(f"[RosSubscriber] Received: {message}")
 
     def get_last_message(self):
         return self.last_message

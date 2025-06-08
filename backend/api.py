@@ -1,14 +1,21 @@
 from fastapi import FastAPI, HTTPException
-from publisher import RosPublisher
-from publisher_available import TOPIC_MESSAGE_TYPES
+
+from ros_bridge.publisher import RosPublisher
+from ros_bridge.subscriber import RosSubscriber
+from ros_bridge.publisher_available import TOPIC_MESSAGE_TYPES
+from ros_bridge.subscriber_available import SUBSCRIBABLE_TOPIC_MESSAGE_TYPES 
+
 from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
 from msgs.Pose import PoseMessageRequest
-
+from msgs.Odom import OdomMessageRequest 
+from msgs.Transformation import TfMessageRequest
 
 publishers = {}
+subscribers = {}
 app = FastAPI()
 
+# Publishers API 
 @app.post("/publish/string")
 async def publish_string(req: StringMessageRequest):
     topic = req.topic
@@ -22,7 +29,10 @@ async def publish_string(req: StringMessageRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    return {"status": "published", "topic": topic, "type": msg_type, "data": req.data}
+    return {"status": "published", 
+            "topic": topic, 
+            "type": msg_type, 
+            "data": req.data}
 
 
 @app.post("/publish/twist")
@@ -43,7 +53,10 @@ async def publish_twist(req: TwistMessageRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-    return {"status": "published", "topic": topic, "type": msg_type, "message": twist_msg}
+    return {"status": "published", 
+            "topic": topic,
+            "type": msg_type, 
+            "message": twist_msg}
 
 @app.post("/publish/pose")
 async def publish_pose(req: PoseMessageRequest):
@@ -68,4 +81,51 @@ async def publish_pose(req: PoseMessageRequest):
         "topic": topic,
         "type": msg_type,
         "message": pose_msg
+    }
+
+# Subscribers API 
+@app.post("/subscribe/odom")
+async def get_odom(req: OdomMessageRequest):
+    topic = req.topic
+    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "nav_msgs/Odometry")
+
+    if topic not in subscribers:
+        subscriber = RosSubscriber(topic_name=topic, message_type=msg_type)
+        subscriber.subscribe()
+        subscribers[topic] = subscriber
+
+    try:
+        odom_msg = subscribers[topic].get_last_message()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": "subscribed",
+        "topic": topic,
+        "type": msg_type,
+        "message": odom_msg
+    }
+
+@app.post("/subscribe/tf")
+async def get_odom(req: TfMessageRequest):
+    topic = req.topic
+    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "tf2_msgs/TFMessage")
+
+    if topic not in subscribers:
+        subscriber = RosSubscriber(topic_name=topic, message_type=msg_type)
+        subscriber.subscribe()
+        subscribers[topic] = subscriber
+
+    try:
+        odom_msg = subscribers[topic].get_last_message()
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": "subscribed",
+        "topic": topic,
+        "type": msg_type,
+        "message": odom_msg
     }
