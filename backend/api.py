@@ -12,10 +12,12 @@ from msgs.Odom import OdomMessageRequest
 from msgs.Transformation import TfMessageRequest
 
 from roslibpy import Ros
+from ros_process_manager import RosProcessManager
 
 # Create ONE shared connection instance
 ros = Ros(host='192.168.0.224', port=9090)
 ros.run()
+ros_processor = RosProcessManager()
 
 if not ros.is_connected:
     raise Exception("[ROS Bridge] Failed to connect to ROS bridge")
@@ -148,3 +150,27 @@ async def get_tf(req: TfMessageRequest):
         "message": odom_msg
     }
 
+# Mapping and navigation
+@app.post("/start/mapping")
+def start_mapping():
+    ros_processor.start_mapping()
+    return {"status": "mapping started"}
+
+@app.post("/stop/mapping")
+def stop_mapping():
+    ros_processor.stop_mapping()
+    return {"status": "mapping stopped"}
+
+@app.post("/start/navigation")
+def start_navigation():
+    ros_processor.start_navigation()
+    return {"status": "navigation started"}
+
+@app.post("/stop/navigation")
+def stop_navigation():
+    ros_processor.stop_navigation()
+    return {"status": "navigation stopped"}
+
+@app.get("/status")
+def get_status():
+    return ros_processor.status()
