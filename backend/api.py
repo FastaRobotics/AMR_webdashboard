@@ -217,4 +217,6 @@ def stop_navigation():
 
 @app.get("/status")
 def get_status():
-    return ros_processor.status()
+    status = ros_processor.status() 
+    status["connection"] = ros.is_connected
+    return status
