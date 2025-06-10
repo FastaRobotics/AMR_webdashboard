@@ -10,6 +10,7 @@ from msgs.Twist import TwistMessageRequest
 from msgs.Pose import PoseMessageRequest
 from msgs.Odom import OdomMessageRequest 
 from msgs.Transformation import TfMessageRequest
+from msgs.GoalPose import GoalPoseMessageRequest
 
 from roslibpy import Ros
 from ros_process_manager import RosProcessManager
@@ -100,6 +101,49 @@ async def publish_pose(req: PoseMessageRequest):
         "type": msg_type,
         "message": pose_msg
     }
+
+@app.post("/publish/goal_pose")
+async def publish_goal_pose(req: GoalPoseMessageRequest):
+    topic = req.topic
+    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/PoseStamped")
+
+    if topic not in publishers:
+        publishers[topic] = RosPublisher(
+            ros=ros, topic_name=topic, message_type=msg_type)
+
+    pose_msg = {
+        "header": {
+            "frame_id": req.header.frame_id,
+            "stamp": req.header.stamp
+        },
+        "pose": {
+            "position": {
+                "x": req.pose.position.x,
+                "y": req.pose.position.y,
+                "z": req.pose.position.z
+            },
+            "orientation": {
+                "x": req.pose.orientation.x,
+                "y": req.pose.orientation.y,
+                "z": req.pose.orientation.z,
+                "w": req.pose.orientation.w
+            }
+        }
+    }
+
+    try:
+        publishers[topic].publish_once(pose_msg)
+        publishers[topic].close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    return {
+        "status": "published",
+        "topic": topic,
+        "type": msg_type,
+        "message": pose_msg
+    }
+
 
 # Subscribers API 
 @app.post("/subscribe/odom")

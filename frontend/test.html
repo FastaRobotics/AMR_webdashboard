@@ -1,44 +1,45 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <script src="http://static.robotwebtools.org/threejs/current/three.min.js"></script>
-  <script src="http://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
-  <script src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
-  <script src="http://static.robotwebtools.org/ros3djs/current/ros3d.min.js"></script>
-  <script>
-    function init() {
-      var ros = new ROSLIB.Ros({ url : 'ws://localhost:9090' });
+<meta charset="utf-8" />
 
-      var viewer = new ROS3D.Viewer({
-        divID : 'urdf',
-        width : 800,
-        height : 600,
-        antialias : true
-      });
+<script type="text/javascript" src="http://static.robotwebtools.org/EaselJS/current/easeljs.min.js"></script>
+<script type="text/javascript" src="http://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+<script type="text/javascript" src="http://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+<script type="text/javascript" src="http://static.robotwebtools.org/ros2djs/current/ros2d.min.js"></script>
 
-      viewer.addObject(new ROS3D.Grid());
+<script type="text/javascript" type="text/javascript">
+  /**
+   * Setup all visualization elements when the page is loaded.
+   */
+  function init() {
+    // Connect to ROS.
+    var ros = new ROSLIB.Ros({
+      url : 'ws://localhost:9090'
+    });
 
-      var tfClient = new ROSLIB.TFClient({
-        ros : ros,
-        angularThres : 0.01,
-        transThres : 0.01,
-        rate : 10.0
-      });
+    // Create the main viewer.
+    var viewer = new ROS2D.Viewer({
+      divID : 'map',
+      width : 600,
+      height : 500
+    });
 
-      var urdfClient = new ROS3D.UrdfClient({
-  ros : ros,
-  tfClient : tfClient,
-  rootObject : viewer.scene,
-  param : 'robot_description',
-  path : 'http://localhost:8000/meshes/',  // Serve your meshes here
-});
-
-    }
-  </script>
+    // Setup the map client.
+    var gridClient = new ROS2D.OccupancyGridClient({
+      ros : ros,
+      rootObject : viewer.scene
+    });
+    // Scale the canvas to fit to the map
+    gridClient.on('change', function(){
+      viewer.scaleToDimensions(gridClient.currentGrid.width, gridClient.currentGrid.height);
+    });
+  }
+</script>
 </head>
+
 <body onload="init()">
-  <h1>URDF Web Visualization</h1>
-  <div id="urdf"></div>
+  <h1>Simple Map Example</h1>
+  <div id="map"></div>
 </body>
 </html>

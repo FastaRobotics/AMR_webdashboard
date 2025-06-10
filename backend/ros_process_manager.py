@@ -28,7 +28,7 @@ class RosProcessManager:
     def start_navigation(self):
         self.stop_navigation()
         print("[ROS] Starting navigation...")
-        self._run_tmux_command(self.navigation_session, "ros2 launch robot_launch_files navigation.launch.py")
+        self._run_tmux_command(self.navigation_session, "ros2 launch robot_launch_files navigation_launch.py")
 
     def stop_navigation(self):
         print("[ROS] Stopping navigation...")
