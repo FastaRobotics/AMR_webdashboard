@@ -2,25 +2,33 @@ from enum import Enum
 from roslibpy import Ros
 from ros_bridge.publisher import RosPublisher
 from ros_bridge.subscriber import RosSubscriber
-from ros_process_manager import RosProcessManager
+from ros_bridge.service_client import RosServiceClient
+
 
 class RobotStatus(Enum):
     OFFLINE = "offline"
     IDLE = "idle"
     RUN_TASK = "run_task"
 
+
 class Robot:
-    def __init__(self, robot_id: str, port: int, TOPIC_MESSAGE_TYPES, SUBSCRIBABLE_TOPIC_MESSAGE_TYPES):
+    def __init__(self,
+                 robot_id: str,
+                 port: int,
+                 TOPIC_MESSAGE_TYPES,
+                 SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
+                 SERVICE_MESSAGE_TYPES):
         self.robot_id = robot_id
         self.host = "localhost"
         self.port = port
         self.status = RobotStatus.OFFLINE
         self.ros: Ros | None = None
-        self.ros_processor = RosProcessManager()
         self.publishers = {}
         self.subscribers = {}
+        self.services = {}
         self.TOPIC_MESSAGE_TYPES = TOPIC_MESSAGE_TYPES
         self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = SUBSCRIBABLE_TOPIC_MESSAGE_TYPES
+        self.SERVICE_MESSAGE_TYPES = SERVICE_MESSAGE_TYPES
 
     # --------------------
     # Connection Management
@@ -69,17 +77,17 @@ class Robot:
         print(f"[{self.robot_id}] Published to {topic}: {message}")
 
     def publish_string(self, topic: str, data: str):
-        self.publish(topic, {"data": data}, "std_msgs/String")
+        self.publish(topic, {"data": data}, "std_msgs/msg/String")
 
     def publish_twist(self, topic: str, linear: dict, angular: dict):
-        self.publish(topic, {"linear": linear, "angular": angular}, "geometry_msgs/Twist")
+        self.publish(topic, {"linear": linear, "angular": angular}, "geometry_msgs/msg/Twist")
 
     def publish_pose(self, topic: str, position: dict, orientation: dict):
-        self.publish(topic, {"position": position, "orientation": orientation}, "geometry_msgs/Pose")
+        self.publish(topic, {"position": position, "orientation": orientation}, "geometry_msgs/msg/Pose")
 
     def publish_goal_pose(self, topic: str, header: dict, pose: dict):
         message = {"header": header, "pose": pose}
-        self.publish(topic, message, "geometry_msgs/PoseStamped")
+        self.publish(topic, message, "geometry_msgs/msg/PoseStamped")
 
     # --------------------
     # Subscriber Methods
@@ -101,35 +109,49 @@ class Robot:
         return self.subscribers[topic].get_last_message()
 
     def subscribe_odom(self, topic: str):
-        self.subscribe(topic, "nav_msgs/Odometry")
+        self.subscribe(topic, "nav_msgs/msg/Odometry")
         return self.get_last_message(topic)
 
     def subscribe_tf(self, topic: str):
-        self.subscribe(topic, "tf2_msgs/TFMessage")
+        self.subscribe(topic, "tf2_msgs/msg/TFMessage")
         return self.get_last_message(topic)
 
     # --------------------
     # Task Control
     # --------------------
-    def start_mapping(self):
-        self.ros_processor.start_mapping()
+    def call(self, service: str, request: dict):
+        if not self.is_connected():
+            raise RuntimeError(f"[{self.robot_id}] Cannot call service: Not connected.")
+
+        if service not in self.services:
+            msg_type = self.SERVICE_MESSAGE_TYPES.get(service)
+            if not msg_type:
+                raise ValueError(f"[{self.robot_id}] Service {service} not found in SERVICE_MESSAGE_TYPES.")
+            self.services[service] = RosServiceClient(ros=self.ros, service_name=service, message_type=msg_type)
+
+        response = self.services[service].call(request)
+        print(f"[{self.robot_id}] Called service {service} with request {request}, got response {response}")
+        return response
+    
+    def start_mapping(self, service: str = "/start_mapping"):
+        self.call(service, {})
         self.status = RobotStatus.RUN_TASK
         print(f"[{self.robot_id}] Mapping started.")
 
-    def stop_mapping(self):
-        self.ros_processor.stop_mapping()
+    def stop_mapping(self, service: str = "/stop_mapping_and_save_map"):
+        self.call(service, {})
         self.status = RobotStatus.IDLE
         print(f"[{self.robot_id}] Mapping stopped.")
 
-    def start_navigation(self):
-        self.ros_processor.start_navigation()
+    def start_exploring(self, service: str = "/start_exploring"):
+        self.call(service, {})
         self.status = RobotStatus.RUN_TASK
-        print(f"[{self.robot_id}] Navigation started.")
+        print(f"[{self.robot_id}] Exploring started.")
 
-    def stop_navigation(self):
-        self.ros_processor.stop_navigation()
+    def stop_exploring(self, service: str = "/stop_exploring"):
+        self.call(service, {})
         self.status = RobotStatus.IDLE
-        print(f"[{self.robot_id}] Navigation stopped.")
+        print(f"[{self.robot_id}] Exploring stopped.")
 
     # --------------------
     # Status

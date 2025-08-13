@@ -4,4 +4,6 @@ from robot import Robot
 
 class AMR (Robot):
     def __init__(self, robot_id: str, port: int):
-        super().__init__(robot_id, port,TOPIC_MESSAGE_TYPES=TOPIC_MESSAGE_TYPES, SUBSCRIBABLE_TOPIC_MESSAGE_TYPES=SUBSCRIBABLE_TOPIC_MESSAGE_TYPES)
+        super().__init__(robot_id, 
+                         port,TOPIC_MESSAGE_TYPES=TOPIC_MESSAGE_TYPES, 
+                         SUBSCRIBABLE_TOPIC_MESSAGE_TYPES=SUBSCRIBABLE_TOPIC_MESSAGE_TYPES)
