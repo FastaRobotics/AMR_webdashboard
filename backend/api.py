@@ -6,8 +6,8 @@ from typing import Dict, Optional
 # from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
 from msgs.Pose import PoseMessageRequest
-from msgs.Odom import OdomMessageRequest 
-from msgs.Transformation import TfMessageRequest
+# from msgs.Odom import OdomMessageRequest 
+# from msgs.Transformation import TfMessageRequest
 from msgs.GoalPose import GoalPoseMessageRequest
 
 from srv.SaveMap import SaveMapMessageRequest
@@ -152,55 +152,27 @@ async def publish_goal_pose(robot_id: str = Path(..., description="Unique ID of 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# # Subscribers API 
-# @app.post("/subscribe/odom")
-# async def get_odom(req: OdomMessageRequest):
-#     topic = req.topic
-#     msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "nav_msgs/msg/Odometry")
+# Subscribers API 
+@app.post("/robots/{robot_id}/subscribe/odom")
+async def get_odom(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        message = robot.subscribe_odom()
+        return {"status": "published", "robot_id": robot_id, "message": message}
 
-#     if topic not in subscribers:
-#         subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
-#         subscriber.subscribe()
-#         subscribers[topic] = subscriber
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-#     try:
-#         odom_msg = subscribers[topic].get_last_message()
-#         # subscribers[topic].unsubscribe()
+@app.post("/robots/{robot_id}/subscribe/tf")
+async def get_tf(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        message = robot.subscribe_tf()
+        return {"status": "published", "robot_id": robot_id, "message": message}
 
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     return {
-#         "status": "subscribed",
-#         "topic": topic,
-#         "type": msg_type,
-#         "message": odom_msg
-#     }
-
-# @app.post("/subscribe/tf")
-# async def get_tf(req: TfMessageRequest):
-#     topic = req.topic
-#     msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "tf2_msgs/msg/TFMessage")
-
-#     if topic not in subscribers:
-#         subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
-#         subscriber.subscribe()
-#         subscribers[topic] = subscriber
-
-#     try:
-#         odom_msg = subscribers[topic].get_last_message()
-#         # subscribers[topic].unsubscribe()
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     return {
-#         "status": "subscribed",
-#         "topic": topic,
-#         "type": msg_type,
-#         "message": odom_msg
-#     }
-
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+  
 # # Mapping
 # @app.post("/start/mapping")
 # async def start_mapping(req: TriggerMessageRequest):

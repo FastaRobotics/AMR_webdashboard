@@ -100,15 +100,17 @@ class Robot:
     # --------------------
     # Subscriber Methods
     # --------------------
-    def subscribe(self, topic: str, msg_type: str = None):
+    def subscribe(self, topic: str):
         if not self.is_connected():
             raise RuntimeError(f"[{self.robot_id}] Cannot subscribe: Not connected.")
 
-        msg_type = msg_type or self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic)
+        msg_type = self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic)
+
         if topic not in self.subscribers:
             subscriber = RosSubscriber(ros=self.ros, topic_name=topic, message_type=msg_type)
             subscriber.subscribe()
             self.subscribers[topic] = subscriber
+            
         print(f"[{self.robot_id}] Subscribed to {topic}")
 
     def get_last_message(self, topic: str):
@@ -116,11 +118,13 @@ class Robot:
             raise KeyError(f"[{self.robot_id}] Not subscribed to {topic}")
         return self.subscribers[topic].get_last_message()
 
-    def subscribe_odom(self, topic: str):
+    def subscribe_odom(self):
+        topic = self.SubscribableTopics.odom
         self.subscribe(topic, "nav_msgs/msg/Odometry")
         return self.get_last_message(topic)
 
-    def subscribe_tf(self, topic: str):
+    def subscribe_tf(self):
+        topic = self.SubscribableTopics.tf
         self.subscribe(topic, "tf2_msgs/msg/TFMessage")
         return self.get_last_message(topic)
 
