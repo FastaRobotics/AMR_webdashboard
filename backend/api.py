@@ -1,12 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Path
 from roslibpy import Ros
+from typing import Dict, Optional
 
-from ros_bridge.publisher import RosPublisher
-from ros_bridge.subscriber import RosSubscriber
-from ros_bridge.service_client import RosServiceClient
-from ros_bridge.publisher_available import TOPIC_MESSAGE_TYPES
-from ros_bridge.subscriber_available import SUBSCRIBABLE_TOPIC_MESSAGE_TYPES 
-from ros_bridge.service_client_available import SERVICE_MESSAGE_TYPES
 
 from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
@@ -20,57 +15,50 @@ from srv.Trigger import TriggerMessageRequest
 
 from connection.ConnectRequest import ConnectRequest
 
-ros: Ros = None
-publishers = {}
-subscribers = {}
-services = {}
+from robot import Robot  
+from amr_robot import AMR
+from go2_robot import Go2 
 
 app = FastAPI()
 
-@app.post("/connection")
-async def connection(req: ConnectRequest):
-    global ros
+# Keep a registry of multiple robots by id
+ROBOTS: Dict[str, Robot] = {}
 
-    ip = req.ip
-    port = req.port
+ROBOTS['amr_1'] = AMR(robot_id="amr_1", host="localhost", port=9090)
+
+# --------- Helpers ---------
+def get_robot(robot_id: str) -> Robot:
+    if robot_id not in ROBOTS.keys():
+        raise HTTPException(status_code=404, detail=f"Robot '{robot_id}' not found")
+    return ROBOTS[robot_id]
+
+def ensure_connected(robot: Robot):
+    if not robot.is_connected:
+        raise HTTPException(status_code=400, detail=f"Robot '{robot}' is not connected.")
+
+# --------- Connection management ---------
+@app.post("/robots/{robot_id}/connection")
+async def connection(
+    robot_id: str = Path(..., description="Unique ID of the robot"),
+    req: ConnectRequest = None,
+):
+    """
+    Connect or disconnect an existing robot by id.
+    Body fields: ip, port, request ∈ {'connect', 'disconnect'}
+    """
+    if req is None or not req.request:
+        raise HTTPException(status_code=400, detail="Missing 'request' in body.")
+
     request_type = req.request.lower()
 
+    robot = get_robot(robot_id)
+
     if request_type == "connect":
-        if ros and ros.is_connected:
-            return {"message": f"Already connected to ROS at {ip}:{port}"}
-
-        try:
-            ros = Ros(host=ip, port=port)
-            ros.run()
-
-            if not ros.is_connected:
-                raise HTTPException(status_code=500, detail="Failed to connect to ROS.")
-
-            return {"message": f"Connected to ROS at {ip}:{port}"}
-
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        
+        robot.connect()
 
     elif request_type == "disconnect":
-        if ros and ros.is_connected:
-            # Close the connection but don't terminate the reactor
-            ros.close()
-            ros = None
-            return {"message": "Disconnected from ROS"}
-        else:
-            return {"message": "No active connection to disconnect."}
-
-    else:
-        raise HTTPException(status_code=400, detail="Invalid request type. Use 'connect' or 'disconnect'.")
-
-# @app.post("/disconnect")
-# async def disconnect():
-#     if ros and ros.is_connected:
-#         ros.terminate()
-#         ros = None
-#         return {"status": "disconnected", "ros": ros}
-#     else:
-#         raise HTTPException(status_code=400, detail="Not connected to any ROS master.")
+       robot.disconnect()  
 
 
 # Publishers API 
