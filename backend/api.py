@@ -5,10 +5,10 @@ from typing import Dict, Optional
 
 # from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
-# from msgs.Pose import PoseMessageRequest
-# from msgs.Odom import OdomMessageRequest 
-# from msgs.Transformation import TfMessageRequest
-# from msgs.GoalPose import GoalPoseMessageRequest
+from msgs.Pose import PoseMessageRequest
+from msgs.Odom import OdomMessageRequest 
+from msgs.Transformation import TfMessageRequest
+from msgs.GoalPose import GoalPoseMessageRequest
 
 from srv.SaveMap import SaveMapMessageRequest
 from srv.Trigger import TriggerMessageRequest 
@@ -107,74 +107,49 @@ async def publish_twist(robot_id: str = Path(..., description="Unique ID of the 
 
 
 
-# @app.post("/publish/pose")
-# async def publish_pose(req: PoseMessageRequest):
-#     topic = req.topic
-#     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/msg/Pose")
+@app.post("/robots/{robot_id}/publish/pose")
+async def publish_pose(robot_id: str = Path(..., description="Unique ID of the robot"),
+                       req: PoseMessageRequest=None):
+    
+    try: 
+        robot = get_robot(robot_id)
+        robot.publish_pose(req.position,req.orientation)
+        return {"status": "published", "robot_id": robot_id, "message": req}
 
-#     if topic not in publishers:
-#         publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+ 
+@app.post("/robots/{robot_id}/publish/goal_pose")
+async def publish_goal_pose(robot_id: str = Path(..., description="Unique ID of the robot"),
+                            req: GoalPoseMessageRequest = None):
+    try:
+        pose_msg ={
+            "header": {
+                "frame_id": req.header.frame_id,
+                "stamp": req.header.stamp
+            },
+            "pose": {
+                "position": {
+                    "x": req.pose.position.x,
+                    "y": req.pose.position.y,
+                    "z": req.pose.position.z
+                },
+                "orientation": {
+                    "x": req.pose.orientation.x,
+                    "y": req.pose.orientation.y,
+                    "z": req.pose.orientation.z,
+                    "w": req.pose.orientation.w
+                }
+            }
+        }
 
-#     pose_msg = {
-#         "position": req.position,
-#         "orientation": req.orientation
-#     }
+        robot = get_robot(robot_id)
+        robot.publish_goal_pose(pose_msg.header,pose_msg.pose)
+        return {"status": "published", "robot_id": robot_id, "message": req}
 
-#     try:
-#         publishers[topic].publish_once(pose_msg)
-#         publishers[topic].close()
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     return {
-#         "status": "published",
-#         "topic": topic,
-#         "type": msg_type,
-#         "message": pose_msg
-#     }
-
-# @app.post("/publish/goal_pose")
-# async def publish_goal_pose(req: GoalPoseMessageRequest):
-#     topic = req.topic
-#     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/msg/PoseStamped")
-
-#     if topic not in publishers:
-#         publishers[topic] = RosPublisher(
-#             ros=ros, topic_name=topic, message_type=msg_type)
-
-#     pose_msg = {
-#         "header": {
-#             "frame_id": req.header.frame_id,
-#             "stamp": req.header.stamp
-#         },
-#         "pose": {
-#             "position": {
-#                 "x": req.pose.position.x,
-#                 "y": req.pose.position.y,
-#                 "z": req.pose.position.z
-#             },
-#             "orientation": {
-#                 "x": req.pose.orientation.x,
-#                 "y": req.pose.orientation.y,
-#                 "z": req.pose.orientation.z,
-#                 "w": req.pose.orientation.w
-#             }
-#         }
-#     }
-
-#     try:
-#         publishers[topic].publish_once(pose_msg)
-#         publishers[topic].close()
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     return {
-#         "status": "published",
-#         "topic": topic,
-#         "type": msg_type,
-#         "message": pose_msg
-#     }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # # Subscribers API 

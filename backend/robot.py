@@ -67,12 +67,13 @@ class Robot:
     # --------------------
     # Publisher Methods
     # --------------------
-    def publish(self, topic: str, message: dict, msg_type: str = None):
+    def publish(self, topic: str, message: dict):
         if not self.is_connected():
             self.status = RobotStatus.OFFLINE
             raise RuntimeError(f"[{self.robot_id}] Cannot publish: Not connected.")
+        
+        msg_type = self.PUBLISHABLE_TOPIC_MESSAGE_TYPES[topic]
 
-        msg_type = msg_type or self.PUBLISHABLE_TOPIC_MESSAGE_TYPES.get(topic)
         if topic not in self.publishers:
             self.publishers[topic] = RosPublisher(ros=self.ros, topic_name=topic, message_type=msg_type)
 
@@ -80,20 +81,21 @@ class Robot:
         self.publishers[topic].close()
         print(f"[{self.robot_id}] Published to {topic}: {message}")
 
-    def publish_string(self, topic: str, data: str):
-        self.publish(topic, {"data": data}, "std_msgs/msg/String")
+    def publish_string(self, data: str):
+        topic = self.PublishableTopics.chatter
+        self.publish(topic, {"data": data})
 
     def publish_twist(self, linear: dict, angular: dict):
         topic = self.PublishableTopics.cmd_vel
-        message = self.PUBLISHABLE_TOPIC_MESSAGE_TYPES[topic]
-        self.publish(topic , {"linear": linear, "angular": angular}, message)
+        self.publish(topic , {"linear": linear, "angular": angular})
 
-    def publish_pose(self, topic: str, position: dict, orientation: dict):
-        self.publish(topic, {"position": position, "orientation": orientation}, "geometry_msgs/msg/Pose")
+    def publish_pose(self, position: dict, orientation: dict):
+        topic = self.PublishableTopics.point
+        self.publish(topic, {"position": position, "orientation": orientation})
 
-    def publish_goal_pose(self, topic: str, header: dict, pose: dict):
-        message = {"header": header, "pose": pose}
-        self.publish(topic, message, "geometry_msgs/msg/PoseStamped")
+    def publish_goal_pose(self, header: dict, pose: dict):
+        topic = self.PublishableTopics.goal_pose
+        self.publish(topic, {"header": header, "pose": pose})
 
     # --------------------
     # Subscriber Methods
