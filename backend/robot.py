@@ -19,7 +19,7 @@ class Robot:
                  PUBLISHABLE_TOPIC_MESSAGE_TYPES,  
                  SubscribableTopics, 
                  SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
-                 SERVICE_MESSAGE_TYPES):
+                 SERVICE_MESSAGE_TYPES=None):
         self.robot_id = robot_id
         self.host = "localhost"
         self.port = port

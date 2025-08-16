@@ -99,7 +99,7 @@ async def publish_twist(robot_id: str = Path(..., description="Unique ID of the 
     
     try: 
         robot = get_robot(robot_id)
-        robot.publish_twist("",req.linear,req.angular)
+        robot.publish_twist(req.linear,req.angular)
         return {"status": "published", "robot_id": robot_id, "message": req}
 
     except Exception as e:
