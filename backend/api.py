@@ -1,9 +1,12 @@
 from fastapi import FastAPI, HTTPException
+from roslibpy import Ros
 
 from ros_bridge.publisher import RosPublisher
 from ros_bridge.subscriber import RosSubscriber
+from ros_bridge.service_client import RosServiceClient
 from ros_bridge.publisher_available import TOPIC_MESSAGE_TYPES
 from ros_bridge.subscriber_available import SUBSCRIBABLE_TOPIC_MESSAGE_TYPES 
+from ros_bridge.service_client_available import SERVICE_MESSAGE_TYPES
 
 from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
@@ -12,28 +15,69 @@ from msgs.Odom import OdomMessageRequest
 from msgs.Transformation import TfMessageRequest
 from msgs.GoalPose import GoalPoseMessageRequest
 
-from roslibpy import Ros
-from ros_process_manager import RosProcessManager
+from srv.SaveMap import SaveMapMessageRequest
+from srv.Trigger import TriggerMessageRequest 
 
-# Create ONE shared connection instance
-ros = Ros(host='192.168.0.224', port=9090)
-ros.run()
-ros_processor = RosProcessManager()
+from connection.ConnectRequest import ConnectRequest
 
-if not ros.is_connected:
-    raise Exception("[ROS Bridge] Failed to connect to ROS bridge")
-
-print("[ROS Bridge] Connected to ROS at ws://192.168.0.224:9090")
-
+ros: Ros = None
 publishers = {}
 subscribers = {}
+services = {}
+
 app = FastAPI()
+
+@app.post("/connection")
+async def connection(req: ConnectRequest):
+    global ros
+
+    ip = req.ip
+    port = req.port
+    request_type = req.request.lower()
+
+    if request_type == "connect":
+        if ros and ros.is_connected:
+            return {"message": f"Already connected to ROS at {ip}:{port}"}
+
+        try:
+            ros = Ros(host=ip, port=port)
+            ros.run()
+
+            if not ros.is_connected:
+                raise HTTPException(status_code=500, detail="Failed to connect to ROS.")
+
+            return {"message": f"Connected to ROS at {ip}:{port}"}
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    elif request_type == "disconnect":
+        if ros and ros.is_connected:
+            # Close the connection but don't terminate the reactor
+            ros.close()
+            ros = None
+            return {"message": "Disconnected from ROS"}
+        else:
+            return {"message": "No active connection to disconnect."}
+
+    else:
+        raise HTTPException(status_code=400, detail="Invalid request type. Use 'connect' or 'disconnect'.")
+
+# @app.post("/disconnect")
+# async def disconnect():
+#     if ros and ros.is_connected:
+#         ros.terminate()
+#         ros = None
+#         return {"status": "disconnected", "ros": ros}
+#     else:
+#         raise HTTPException(status_code=400, detail="Not connected to any ROS master.")
+
 
 # Publishers API 
 @app.post("/publish/string")
 async def publish_string(req: StringMessageRequest):
     topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "std_msgs/String")
+    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "std_msgs/msg/String")
 
     if topic not in publishers:
         publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
@@ -53,7 +97,7 @@ async def publish_string(req: StringMessageRequest):
 @app.post("/publish/twist")
 async def publish_twist(req: TwistMessageRequest):
     topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Twist")
+    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/msg/Twist")
 
     if topic not in publishers:
         publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
@@ -78,7 +122,7 @@ async def publish_twist(req: TwistMessageRequest):
 @app.post("/publish/pose")
 async def publish_pose(req: PoseMessageRequest):
     topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Pose")
+    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/msg/Pose")
 
     if topic not in publishers:
         publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
@@ -105,7 +149,7 @@ async def publish_pose(req: PoseMessageRequest):
 @app.post("/publish/goal_pose")
 async def publish_goal_pose(req: GoalPoseMessageRequest):
     topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/PoseStamped")
+    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/msg/PoseStamped")
 
     if topic not in publishers:
         publishers[topic] = RosPublisher(
@@ -149,7 +193,7 @@ async def publish_goal_pose(req: GoalPoseMessageRequest):
 @app.post("/subscribe/odom")
 async def get_odom(req: OdomMessageRequest):
     topic = req.topic
-    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "nav_msgs/Odometry")
+    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "nav_msgs/msg/Odometry")
 
     if topic not in subscribers:
         subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
@@ -173,7 +217,7 @@ async def get_odom(req: OdomMessageRequest):
 @app.post("/subscribe/tf")
 async def get_tf(req: TfMessageRequest):
     topic = req.topic
-    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "tf2_msgs/TFMessage")
+    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "tf2_msgs/msg/TFMessage")
 
     if topic not in subscribers:
         subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
@@ -194,29 +238,89 @@ async def get_tf(req: TfMessageRequest):
         "message": odom_msg
     }
 
-# Mapping and navigation
+# Mapping
 @app.post("/start/mapping")
-def start_mapping():
-    ros_processor.start_mapping()
-    return {"status": "mapping started"}
+async def start_mapping(req: TriggerMessageRequest):
+    service_name = req.service_name or "/start_mapping"
+    service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "std_srv/srv/Trigger")
+    request = req.request 
+
+    try:
+        if service_type not in services:
+            service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
+            response = service.call(request)
+
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {
+        "status": "service called", 
+        "service_name": service_name, 
+        "service_type": service_type, 
+        "message": response
+    }
 
 @app.post("/stop/mapping")
-def stop_mapping():
-    ros_processor.stop_mapping()
-    return {"status": "mapping stopped"}
+async def stop_mapping(req: SaveMapMessageRequest):
+    service_name = req.service_name or "/stop_mapping_and_save_map"
+    service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "go2_msgs/srv/SaveMap")
+    request = req.request 
 
-@app.post("/start/navigation")
-def start_navigation():
-    ros_processor.start_navigation()
-    return {"status": "navigation started"}
+    try:
+        if service_type not in services:
+            service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
+            response = service.call(request)
 
-@app.post("/stop/navigation")
-def stop_navigation():
-    ros_processor.stop_navigation()
-    return {"status": "navigation stopped"}
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {
+        "status": "service called", 
+        "service_name": service_name, 
+        "service_type": service_type, 
+        "message": response
+    }
 
-@app.get("/status")
-def get_status():
-    status = ros_processor.status() 
-    status["connection"] = ros.is_connected
-    return status
+# exploring service (for auto mapping)
+@app.post("/start/exploring")
+async def start_exploring(req: TriggerMessageRequest):
+    service_name = req.service_name or "/start_exploring"
+    service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "std_srv/srv/Trigger")
+    request = req.request 
+
+    try:
+        if service_type not in services:
+            service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
+            response = service.call(request)
+
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {
+        "status": "service called", 
+        "service_name": service_name, 
+        "service_type": service_type, 
+        "message": response
+    }
+
+@app.post("/stop/exploring")
+async def stop_mapping(req: SaveMapMessageRequest):
+    service_name = req.service_name or "/stop_exploring"
+    service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "go2_msgs/srv/SaveMap")
+    request = req.request 
+
+    try:
+        if service_type not in services:
+            service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
+            response = service.call(request)
+
+    except Exception as e: 
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    return {
+        "status": "service called", 
+        "service_name": service_name, 
+        "service_type": service_type, 
+        "message": response
+    }
+ 
