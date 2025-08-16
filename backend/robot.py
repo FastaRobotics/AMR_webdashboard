@@ -10,7 +10,7 @@ class RobotStatus(Enum):
     RUN_TASK = "run_task"
 
 class Robot:
-    def __init__(self, robot_id: str, port: int, TOPIC_MESSAGE_TYPES, SUBSCRIBABLE_TOPIC_MESSAGE_TYPES):
+    def __init__(self, robot_id: str, port: int, PublishableTopics,  PUBLISHABLE_TOPIC_MESSAGE_TYPES,  SubscribableTopics, SUBSCRIBABLE_TOPIC_MESSAGE_TYPES):
         self.robot_id = robot_id
         self.host = "localhost"
         self.port = port
@@ -19,7 +19,9 @@ class Robot:
         self.ros_processor = RosProcessManager()
         self.publishers = {}
         self.subscribers = {}
-        self.TOPIC_MESSAGE_TYPES = TOPIC_MESSAGE_TYPES
+        self.PublishableTopics = PublishableTopics
+        self.SubscribableTopics = SubscribableTopics
+        self.PUBLISHABLE_TOPIC_MESSAGE_TYPES = PUBLISHABLE_TOPIC_MESSAGE_TYPES
         self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = SUBSCRIBABLE_TOPIC_MESSAGE_TYPES
 
     # --------------------
@@ -60,7 +62,7 @@ class Robot:
             self.status = RobotStatus.OFFLINE
             raise RuntimeError(f"[{self.robot_id}] Cannot publish: Not connected.")
 
-        msg_type = msg_type or self.TOPIC_MESSAGE_TYPES.get(topic)
+        msg_type = msg_type or self.PUBLISHABLE_TOPIC_MESSAGE_TYPES.get(topic)
         if topic not in self.publishers:
             self.publishers[topic] = RosPublisher(ros=self.ros, topic_name=topic, message_type=msg_type)
 
@@ -72,7 +74,7 @@ class Robot:
         self.publish(topic, {"data": data}, "std_msgs/String")
 
     def publish_twist(self, topic: str, linear: dict, angular: dict):
-        self.publish(topic, {"linear": linear, "angular": angular}, "geometry_msgs/Twist")
+        self.publish(self, {"linear": linear, "angular": angular}, "geometry_msgs/Twist")
 
     def publish_pose(self, topic: str, position: dict, orientation: dict):
         self.publish(topic, {"position": position, "orientation": orientation}, "geometry_msgs/Pose")
