@@ -120,12 +120,12 @@ class Robot:
 
     def subscribe_odom(self):
         topic = self.SubscribableTopics.odom
-        self.subscribe(topic, "nav_msgs/msg/Odometry")
+        self.subscribe(topic)
         return self.get_last_message(topic)
 
     def subscribe_tf(self):
         topic = self.SubscribableTopics.tf
-        self.subscribe(topic, "tf2_msgs/msg/TFMessage")
+        self.subscribe(topic)
         return self.get_last_message(topic)
 
     # --------------------
