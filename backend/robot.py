@@ -83,8 +83,10 @@ class Robot:
     def publish_string(self, topic: str, data: str):
         self.publish(topic, {"data": data}, "std_msgs/msg/String")
 
-    def publish_twist(self, topic: str, linear: dict, angular: dict):
-        self.publish(topic, {"linear": linear, "angular": angular}, "geometry_msgs/msg/Twist")
+    def publish_twist(self, linear: dict, angular: dict):
+        topic = self.PublishableTopics.cmd_vel
+        message = self.PUBLISHABLE_TOPIC_MESSAGE_TYPES[topic]
+        self.publish(topic , {"linear": linear, "angular": angular}, message)
 
     def publish_pose(self, topic: str, position: dict, orientation: dict):
         self.publish(topic, {"position": position, "orientation": orientation}, "geometry_msgs/msg/Pose")

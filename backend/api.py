@@ -4,7 +4,7 @@ from typing import Dict, Optional
 
 
 # from msgs.String import StringMessageRequest 
-# from msgs.Twist import TwistMessageRequest
+from msgs.Twist import TwistMessageRequest
 # from msgs.Pose import PoseMessageRequest
 # from msgs.Odom import OdomMessageRequest 
 # from msgs.Transformation import TfMessageRequest
@@ -71,7 +71,8 @@ async def connection(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# # Publishers API 
+
+# Publishers API 
 # @app.post("/publish/string")
 # async def publish_string(req: StringMessageRequest):
 #     topic = req.topic
@@ -92,30 +93,19 @@ async def connection(
 #             "data": req.data}
 
 
-# @app.post("/publish/twist")
-# async def publish_twist(req: TwistMessageRequest):
-#     topic = req.topic
-#     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/msg/Twist")
+@app.post("/robots/{robot_id}/publish/twist")
+async def publish_twist(robot_id: str = Path(..., description="Unique ID of the robot"),
+                        req: TwistMessageRequest = None,):
+    
+    try: 
+        robot = get_robot(robot_id)
+        robot.publish_twist("",req.linear,req.angular)
+        return {"status": "published", "robot_id": robot_id, "message": req}
 
-#     if topic not in publishers:
-#         publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-#     twist_msg = {
-#         "linear": req.linear,
-#         "angular": req.angular
-#     }
 
-#     try:
-#         publishers[topic].publish_once(twist_msg)
-#         publishers[topic].close()
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     return {"status": "published", 
-#             "topic": topic,
-#             "type": msg_type, 
-#             "message": twist_msg}
 
 # @app.post("/publish/pose")
 # async def publish_pose(req: PoseMessageRequest):
