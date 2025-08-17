@@ -173,89 +173,47 @@ async def get_tf(robot_id: str = Path(..., description="Unique ID of the robot")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
   
-# # Mapping
-# @app.post("/start/mapping")
-# async def start_mapping(req: TriggerMessageRequest):
-#     service_name = req.service_name or "/start_mapping"
-#     service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "std_srv/srv/Trigger")
-#     request = req.request 
+# Mapping
+@app.post("/robots/{robot_id}/mapping/start")
+async def start_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        robot.start_mapping()
+        return {"status": "map started", "robot_id": robot_id }
 
-#     try:
-#         if service_type not in services:
-#             service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
-#             response = service.call(request)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-#     except Exception as e: 
-#         raise HTTPException(status_code=500, detail=str(e))
+@app.post("/robots/{robot_id}/mapping/stop")
+async def stop_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        robot.stop_mapping()
+        return {"status": "map stopped", "robot_id": robot_id }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# exploring service (for auto mapping)
+@app.post("/robots/{robot_id}/exploring/start")
+async def start_exploring(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        robot.start_exploring()
+        return {"status": "exploring started", "robot_id": robot_id }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
-#     return {
-#         "status": "service called", 
-#         "service_name": service_name, 
-#         "service_type": service_type, 
-#         "message": response
-#     }
 
-# @app.post("/stop/mapping")
-# async def stop_mapping(req: SaveMapMessageRequest):
-#     service_name = req.service_name or "/stop_mapping_and_save_map"
-#     service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "go2_msgs/srv/SaveMap")
-#     request = req.request 
+@app.post("/robots/{robot_id}/exploring/stop")
+async def stop_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        robot.stop_exploring()
+        return {"status": "exploring stopped", "robot_id": robot_id }
 
-#     try:
-#         if service_type not in services:
-#             service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
-#             response = service.call(request)
-
-#     except Exception as e: 
-#         raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
-#     return {
-#         "status": "service called", 
-#         "service_name": service_name, 
-#         "service_type": service_type, 
-#         "message": response
-#     }
-
-# # exploring service (for auto mapping)
-# @app.post("/start/exploring")
-# async def start_exploring(req: TriggerMessageRequest):
-#     service_name = req.service_name or "/start_exploring"
-#     service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "std_srv/srv/Trigger")
-#     request = req.request 
-
-#     try:
-#         if service_type not in services:
-#             service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
-#             response = service.call(request)
-
-#     except Exception as e: 
-#         raise HTTPException(status_code=500, detail=str(e))
-    
-#     return {
-#         "status": "service called", 
-#         "service_name": service_name, 
-#         "service_type": service_type, 
-#         "message": response
-#     }
-
-# @app.post("/stop/exploring")
-# async def stop_mapping(req: SaveMapMessageRequest):
-#     service_name = req.service_name or "/stop_exploring"
-#     service_type = req.service_type or SERVICE_MESSAGE_TYPES.get(service_name, "go2_msgs/srv/SaveMap")
-#     request = req.request 
-
-#     try:
-#         if service_type not in services:
-#             service = RosServiceClient(ros=ros, service_name=service_name, service_type=service_type)
-#             response = service.call(request)
-
-#     except Exception as e: 
-#         raise HTTPException(status_code=500, detail=str(e))
-    
-#     return {
-#         "status": "service called", 
-#         "service_name": service_name, 
-#         "service_type": service_type, 
-#         "message": response
-#     }
  

@@ -19,7 +19,8 @@ class Robot:
                  PUBLISHABLE_TOPIC_MESSAGE_TYPES,  
                  SubscribableTopics, 
                  SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
-                 SERVICE_MESSAGE_TYPES=None):
+                 AVAILABLE_SERVICES,
+                 SERVICE_MESSAGE_TYPES):
         self.robot_id = robot_id
         self.host = "localhost"
         self.port = port
@@ -32,6 +33,7 @@ class Robot:
         self.PUBLISHABLE_TOPIC_MESSAGE_TYPES = PUBLISHABLE_TOPIC_MESSAGE_TYPES
         self.services = {}
         self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = SUBSCRIBABLE_TOPIC_MESSAGE_TYPES
+        self.AVAILABLE_SERVICES = AVAILABLE_SERVICES
         self.SERVICE_MESSAGE_TYPES = SERVICE_MESSAGE_TYPES
 
     # --------------------
@@ -145,22 +147,26 @@ class Robot:
         print(f"[{self.robot_id}] Called service {service} with request {request}, got response {response}")
         return response
     
-    def start_mapping(self, service: str = "/start_mapping"):
+    def start_mapping(self):
+        service = self.AVAILABLE_SERVICES.start_mapping
         self.call(service, {})
         self.status = RobotStatus.RUN_TASK
         print(f"[{self.robot_id}] Mapping started.")
 
-    def stop_mapping(self, service: str = "/stop_mapping_and_save_map"):
+    def stop_mapping(self):
+        service = self.AVAILABLE_SERVICES.stop_mapping_and_save_map
         self.call(service, {})
         self.status = RobotStatus.IDLE
         print(f"[{self.robot_id}] Mapping stopped.")
 
-    def start_exploring(self, service: str = "/start_exploring"):
+    def start_exploring(self):
+        service = self.AVAILABLE_SERVICES.start_exploring
         self.call(service, {})
         self.status = RobotStatus.RUN_TASK
         print(f"[{self.robot_id}] Exploring started.")
 
-    def stop_exploring(self, service: str = "/stop_exploring"):
+    def stop_exploring(self):
+        service = self.AVAILABLE_SERVICES.stop_exploring
         self.call(service, {})
         self.status = RobotStatus.IDLE
         print(f"[{self.robot_id}] Exploring stopped.")
