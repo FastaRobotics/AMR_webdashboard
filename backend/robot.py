@@ -138,10 +138,10 @@ class Robot:
             raise RuntimeError(f"[{self.robot_id}] Cannot call service: Not connected.")
 
         if service not in self.services:
-            msg_type = self.SERVICE_MESSAGE_TYPES.get(service)
-            if not msg_type:
+            srv_type = self.SERVICE_MESSAGE_TYPES.get(service)
+            if not srv_type:
                 raise ValueError(f"[{self.robot_id}] Service {service} not found in SERVICE_MESSAGE_TYPES.")
-            self.services[service] = RosServiceClient(ros=self.ros, service_name=service, message_type=msg_type)
+            self.services[service] = RosServiceClient(ros=self.ros, service_name=service, service_type=srv_type)
 
         response = self.services[service].call(request)
         print(f"[{self.robot_id}] Called service {service} with request {request}, got response {response}")

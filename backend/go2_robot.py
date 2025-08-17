@@ -12,5 +12,5 @@ class Go2 (Robot):
                          PUBLISHABLE_TOPIC_MESSAGE_TYPES=PUBLISHABLE_TOPIC_MESSAGE_TYPES, 
                          SubscribableTopics= SubscribableTopics,
                          SUBSCRIBABLE_TOPIC_MESSAGE_TYPES=SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
-                         AVAILABLE_SERVICES=AVAILABLE_SERVICES,
+                         AVAILABLE_SERVICES=AvailableServices,
                          SERVICE_MESSAGE_TYPES= SERVICE_MESSAGE_TYPES)
