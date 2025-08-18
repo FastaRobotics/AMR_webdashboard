@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Optional
-from ros_bridge.publisher_available import AvailableTopics
 
 
 class Header(BaseModel):
@@ -25,7 +24,5 @@ class Pose(BaseModel):
     orientation: Orientation = Field(default_factory=Orientation)
 
 class GoalPoseMessageRequest(BaseModel):
-    topic: AvailableTopics = AvailableTopics.goal_pose
     header: Header = Field(default_factory=Header)
     pose: Pose = Field(default_factory=Pose)
-    type: Optional[str] = "geometry_msgs/PoseStamped"

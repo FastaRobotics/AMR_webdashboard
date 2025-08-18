@@ -1,12 +1,51 @@
 import streamlit as st
 import requests
-import json
-import time # For simulating real-time updates and polling
-import folium # Example for map visualization, you might use a different library
-from streamlit_folium import st_folium # To render folium maps in Streamlit
+import folium
+from streamlit_folium import st_folium
+import streamlit.components.v1 as components
 
-# --- Configuration ---
-FASTAPI_BASE_URL = "http://192.168.0.224:8000" # Replace with your FastAPI server address
+FASTAPI_BASE_URL = "http://192.168.0.224:8000"
+
+def get_robot_status():
+    try:
+        response = requests.get(f"{FASTAPI_BASE_URL}/status")
+        response.raise_for_status()
+        return response.json()
+    except:
+        return {"connection": False}
+
+st.set_page_config(layout="wide", page_title="Warehouse AMR Dashboard")
+st.title("Warehouse AMR Control Dashboard")
+
+# Status Bar
+status = get_robot_status()
+col_status, col_title = st.columns([1, 5])
+with col_status:
+    if status.get("connection"):
+        st.markdown("<span style='color:green;'>●</span> Connected", unsafe_allow_html=True)
+    else:
+        st.markdown("<span style='color:red;'>●</span> Disconnected", unsafe_allow_html=True)
+with col_title:
+    st.write(f"Current Mode: {status.get('current_mode', 'Unknown')}")
+
+st.markdown("---")
+
+# Sidebar
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", [
+    "Dashboard Overview", "Robot Control", "Mapping", "Navigation", "Robot Status", "Logs/Events", "Live Visualizer"
+])
+
+# --- Live Visualizer Page ---
+if page == "Live Visualizer":
+    st.header("Live Visualizer")
+    st.markdown("Embedded local viewer at `http://localhost:8080`.")
+    components.iframe("http://localhost:8080", height=640, width=1080)
+
+# Other pages are placeholders here
+elif page == "Dashboard Overview":
+    st.header("Dashboard Overview")
+    st.info("Other functionality not shown in this snippet.")
 
 # --- Helper Functions for API Calls ---
 def get_robot_status():
@@ -142,7 +181,7 @@ if page == "Dashboard Overview":
 
     with col1:
         st.subheader("Robot Summary")
-        st.info(f"**ROS Bridge Connection:** {'Connected' if status.get('ros_connected') else 'Disconnected'}")
+        st.info(f"**ROS Bridge Connection:** {'Connected' if status.get('connection') else 'Disconnected'}")
         st.info(f"**Robot Mode:** {status.get('current_mode', 'Unknown')}")
         st.info(f"**Battery Level:** N/A (Implement subscription if available)") # Placeholder
 
