@@ -28,6 +28,7 @@ support = FastaGPTAssistant()
 ROBOTS: Dict[str, Robot] = {}
 
 ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090)
+ROBOTS['go2_1'] = Go2(robot_id="go2_1", port=7070)
 
 # --------- Helpers ---------
 def get_robot(robot_id: str) -> Robot:
@@ -210,7 +211,7 @@ async def start_exploring(robot_id: str = Path(..., description="Unique ID of th
     
 
 @app.post("/robots/{robot_id}/exploring/stop")
-async def stop_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def stop_exploring(robot_id: str = Path(..., description="Unique ID of the robot")):
     try: 
         robot = get_robot(robot_id)
         robot.stop_exploring()
@@ -219,6 +220,27 @@ async def stop_mapping(robot_id: str = Path(..., description="Unique ID of the r
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
+# navigation service (for navigation)
+@app.post("/robots/{robot_id}/navigation/start")
+async def start_navigation(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        robot.start_navigation()
+        return {"status": "exploring started", "robot_id": robot_id }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+@app.post("/robots/{robot_id}/navigation/stop")
+async def stop_navigation(robot_id: str = Path(..., description="Unique ID of the robot")):
+    try: 
+        robot = get_robot(robot_id)
+        robot.stop_navigation()
+        return {"status": "navigation stopped", "robot_id": robot_id }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # AI Support
 @app.post("/assistant/ask")

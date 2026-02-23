@@ -171,6 +171,18 @@ class Robot:
         self.status = RobotStatus.IDLE
         print(f"[{self.robot_id}] Exploring stopped.")
 
+    def start_navigation(self):
+        service = self.AVAILABLE_SERVICES.start_navigation
+        self.call(service, {})
+        self.status = RobotStatus.IDLE
+        print(f"[{self.robot_id}] navigation started.")
+
+    def stop_navigation(self):
+        service = self.AVAILABLE_SERVICES.stop_navigation
+        self.call(service, {})
+        self.status = RobotStatus.IDLE
+        print(f"[{self.robot_id}] navigation stopped.")
+
     # --------------------
     # Status
     # --------------------

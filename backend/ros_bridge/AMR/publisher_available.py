@@ -7,6 +7,7 @@ class PublishableTopics(str, Enum):
     cmd_vel_nav = "cmd_vel_nav"
     cmd_vel_out = "cmd_vel_out"
     cmd_vel = "cmd_vel"
+    cmd_vel_filtered = "cmd_vel_filtered"
     point = "point"
     goal_pose = "goal_pose"
     initialpose = "initialpose"
