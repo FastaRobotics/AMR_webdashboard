@@ -1,8 +1,8 @@
 from fastapi import FastAPI, HTTPException, Path
 from roslibpy import Ros
 from typing import Dict, Optional
-from chatbot.assistant import FastaGPTAssistant
-from chatbot.AskRequest import AskRequest 
+# from chatbot.assistant import FastaGPTAssistant
+# from chatbot.AskRequest import AskRequest 
 
 # from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
@@ -22,7 +22,7 @@ from go2_robot import Go2
 
 
 app = FastAPI()
-support = FastaGPTAssistant()
+# support = FastaGPTAssistant()
 
 # Keep a registry of multiple robots by id
 ROBOTS: Dict[str, Robot] = {}
@@ -242,16 +242,16 @@ async def stop_navigation(robot_id: str = Path(..., description="Unique ID of th
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# AI Support
-@app.post("/assistant/ask")
-async def ask(request: AskRequest):
-    try:
-        question = request.question
-        response = support.ask(question)
-        return {"response": response}
+# # AI Support
+# @app.post("/assistant/ask")
+# async def ask(request: AskRequest):
+#     try:
+#         question = request.question
+#         response = support.ask(question)
+#         return {"response": response}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
     
  

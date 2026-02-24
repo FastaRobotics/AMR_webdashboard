@@ -1,2 +1,4 @@
-fastapi
-roslibpy
+chromadb==1.5.1
+fastapi==0.131.0
+pydantic==2.12.5
+roslibpy==1.8.1
