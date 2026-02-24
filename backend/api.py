@@ -4,7 +4,6 @@ from typing import Dict, Optional
 # from chatbot.assistant import FastaGPTAssistant
 # from chatbot.AskRequest import AskRequest 
 
-# from msgs.String import StringMessageRequest 
 from msgs.Twist import TwistMessageRequest
 from msgs.Pose import PoseMessageRequest
 # from msgs.Odom import OdomMessageRequest 
@@ -73,28 +72,6 @@ async def connection(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-
-# Publishers API 
-# @app.post("/publish/string")
-# async def publish_string(req: StringMessageRequest):
-#     topic = req.topic
-#     msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "std_msgs/msg/String")
-
-#     if topic not in publishers:
-#         publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
-
-#     try:
-#         publishers[topic].publish_once({"data": req.data})
-#         publishers[topic].close()
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-#     return {"status": "published", 
-#             "topic": topic, 
-#             "type": msg_type, 
-#             "data": req.data}
 
 
 @app.post("/robots/{robot_id}/publish/twist")
