@@ -14,14 +14,14 @@ class PublishableTopics(str, Enum):
     
 
 PUBLISHABLE_TOPIC_MESSAGE_TYPES = {
-    PublishableTopics.chatter: "std_msgs/msgs/String", 
-    PublishableTopics.cmd_vel_joy: "geometry_msgs/msgs/Twist",
-    PublishableTopics.cmd_vel_nav: "geometry_msgs/msgs/Twist",
-    PublishableTopics.cmd_vel_out: "geometry_msgs/msgs/Twist",
-    PublishableTopics.cmd_vel_dock: "geometry_msgs/msgs/Twist",
-    PublishableTopics.cmd_vel: "geometry_msgs/msgs/Twist",
-    PublishableTopics.point: "geometry_msgs/msgs/Pose",
-    PublishableTopics.goal_pose: "geometry_msgs/msgs/PoseStamped",
-    PublishableTopics.initialpose: "geometry_msgs/msgs/PoseWithCovarianceStamped"
+    PublishableTopics.chatter: "std_msgs/msg/String", 
+    PublishableTopics.cmd_vel_joy: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel_nav: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel_out: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel_dock: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel: "geometry_msgs/msg/Twist",
+    PublishableTopics.point: "geometry_msgs/msg/Pose",
+    PublishableTopics.goal_pose: "geometry_msgs/msg/PoseStamped",
+    PublishableTopics.initialpose: "geometry_msgs/msg/PoseWithCovarianceStamped"
 }
 

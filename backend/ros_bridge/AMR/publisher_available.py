@@ -13,13 +13,13 @@ class PublishableTopics(str, Enum):
     initialpose = "initialpose"
 
 PUBLISHABLE_TOPIC_MESSAGE_TYPES = {
-    PublishableTopics.chatter: "std_msgs/String", 
-    PublishableTopics.cmd_vel_joy: "geometry_msgs/Twist",
-    PublishableTopics.cmd_vel_nav: "geometry_msgs/Twist",
-    PublishableTopics.cmd_vel_out: "geometry_msgs/Twist",
-    PublishableTopics.cmd_vel: "geometry_msgs/Twist",
-    PublishableTopics.point: "geometry_msgs/Pose",
-    PublishableTopics.goal_pose: "geometry_msgs/PoseStamped",
-    PublishableTopics.initialpose: "geometry_msgs/PoseWithCovarianceStamped"
+    PublishableTopics.chatter: "std_msgs/msg/String", 
+    PublishableTopics.cmd_vel_joy: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel_nav: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel_out: "geometry_msgs/msg/Twist",
+    PublishableTopics.cmd_vel: "geometry_msgs/msg/Twist",
+    PublishableTopics.point: "geometry_msgs/msg/Pose",
+    PublishableTopics.goal_pose: "geometry_msgs/msg/PoseStamped",
+    PublishableTopics.initialpose: "geometry_msgs/msg/PoseWithCovarianceStamped"
 }
 

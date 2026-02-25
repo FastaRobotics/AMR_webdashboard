@@ -129,6 +129,11 @@ class Robot:
         topic = self.SubscribableTopics.tf
         self.subscribe(topic)
         return self.get_last_message(topic)
+    
+    def subscribe_map(self):
+        topic = self.SubscribableTopics.map
+        self.subscribe(topic)
+        return self.get_last_message(topic)
 
     # --------------------
     # Task Control

@@ -1,4 +1,7 @@
 from fastapi import FastAPI, HTTPException, Path
+from fastapi import WebSocket, WebSocketDisconnect
+import asyncio
+
 from roslibpy import Ros
 from typing import Dict, Optional
 # from chatbot.assistant import FastaGPTAssistant
@@ -6,13 +9,9 @@ from typing import Dict, Optional
 
 from msgs.Twist import TwistMessageRequest
 from msgs.Pose import PoseMessageRequest
-# from msgs.Odom import OdomMessageRequest 
-# from msgs.Transformation import TfMessageRequest
 from msgs.GoalPose import GoalPoseMessageRequest
-
 from srv.SaveMap import SaveMapMessageRequest
 from srv.Trigger import TriggerMessageRequest 
-
 from connection.ConnectRequest import ConnectRequest
 
 from robot import Robot  
@@ -73,87 +72,6 @@ async def connection(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/robots/{robot_id}/publish/twist")
-async def publish_twist(robot_id: str = Path(..., description="Unique ID of the robot"),
-                        req: TwistMessageRequest = None,):
-    
-    try: 
-        robot = get_robot(robot_id)
-        robot.publish_twist(req.linear,req.angular)
-        return {"status": "published", "robot_id": robot_id, "message": req}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
-@app.post("/robots/{robot_id}/publish/pose")
-async def publish_pose(robot_id: str = Path(..., description="Unique ID of the robot"),
-                       req: PoseMessageRequest=None):
-    
-    try: 
-        robot = get_robot(robot_id)
-        robot.publish_pose(req.position,req.orientation)
-        return {"status": "published", "robot_id": robot_id, "message": req}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
- 
-@app.post("/robots/{robot_id}/publish/goal_pose")
-async def publish_goal_pose(robot_id: str = Path(..., description="Unique ID of the robot"),
-                            req: GoalPoseMessageRequest = None):
-    try:
-        pose_msg ={
-            "header": {
-                "frame_id": req.header.frame_id,
-                "stamp": req.header.stamp
-            },
-            "pose": {
-                "position": {
-                    "x": req.pose.position.x,
-                    "y": req.pose.position.y,
-                    "z": req.pose.position.z
-                },
-                "orientation": {
-                    "x": req.pose.orientation.x,
-                    "y": req.pose.orientation.y,
-                    "z": req.pose.orientation.z,
-                    "w": req.pose.orientation.w
-                }
-            }
-        }
-
-        robot = get_robot(robot_id)
-        robot.publish_goal_pose(pose_msg.header,pose_msg.pose)
-        return {"status": "published", "robot_id": robot_id, "message": req}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# Subscribers API 
-@app.post("/robots/{robot_id}/subscribe/odom")
-async def get_odom(robot_id: str = Path(..., description="Unique ID of the robot")):
-    try: 
-        robot = get_robot(robot_id)
-        message = robot.subscribe_odom()
-        return {"status": "published", "robot_id": robot_id, "message": message}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/robots/{robot_id}/subscribe/tf")
-async def get_tf(robot_id: str = Path(..., description="Unique ID of the robot")):
-    try: 
-        robot = get_robot(robot_id)
-        message = robot.subscribe_tf()
-        return {"status": "published", "robot_id": robot_id, "message": message}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-  
 # Mapping
 @app.post("/robots/{robot_id}/mapping/start")
 async def start_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
@@ -218,6 +136,83 @@ async def stop_navigation(robot_id: str = Path(..., description="Unique ID of th
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.websocket("/robots/{robot_id}/ws/subscribing")
+async def robot_ws(websocket: WebSocket, robot_id: str):
+    await websocket.accept()
+
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    # subscribe once
+    robot.subscribe_odom()
+    robot.subscribe_tf()
+    robot.subscribe_map()
+
+    try:
+        while True:
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "odom": robot.get_last_message(robot.SubscribableTopics.odom),
+                "tf": robot.get_last_message(robot.SubscribableTopics.tf), 
+                "map": robot.get_last_message(robot.SubscribableTopics.map)
+            }
+
+            await websocket.send_json(data)
+            await asyncio.sleep(0.05)  # 20Hz stream
+
+    except WebSocketDisconnect:
+        print(f"{robot_id} websocket disconnected")
+
+    except Exception as e:
+        print("WS error:", e)
+
+@app.websocket("/robots/{robot_id}/ws/publish")
+async def robot_publish_ws(websocket: WebSocket, robot_id: str):
+    await websocket.accept()
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            msg = await websocket.receive_json()
+
+            cmd_type = msg.get("type")
+            data = msg.get("data")
+
+            if cmd_type == "twist":
+                robot.publish_twist(data["linear"], data["angular"])
+            elif cmd_type == "pose":
+                robot.publish_pose(data["position"], data["orientation"])
+            elif cmd_type == "goal_pose":
+                robot.publish_goal_pose(data["header"], data["pose"])
+            else:
+                await websocket.send_json({"error": f"Unknown command type {cmd_type}"})
+                continue
+
+            await websocket.send_json({"status": "ok", "type": cmd_type})
+
+    except WebSocketDisconnect:
+        print(f"[WS PUB] {robot_id} client disconnected")
+
+    except Exception as e:
+        print(f"[WS PUB ERROR {robot_id}]", e)
+
+    finally:
+        try:
+            await websocket.close()
+        except:
+            pass
+
 
 # # AI Support
 # @app.post("/assistant/ask")
