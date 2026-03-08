@@ -4,15 +4,13 @@ import asyncio
 
 from roslibpy import Ros
 from typing import Dict, Optional
-# from chatbot.assistant import FastaGPTAssistant
-# from chatbot.AskRequest import AskRequest 
 
 from msgs.Twist import TwistMessageRequest
 from msgs.Pose import PoseMessageRequest
 from msgs.GoalPose import GoalPoseMessageRequest
 from srv.SaveMap import SaveMapMessageRequest
 from srv.Trigger import TriggerMessageRequest 
-from connection.ConnectRequest import ConnectRequest
+from connection.ConnectRequest import ConnectRequest, RequestType
 
 from robot import Robot  
 from amr_robot import AMR
@@ -20,11 +18,8 @@ from go2_robot import Go2
 
 
 app = FastAPI()
-# support = FastaGPTAssistant()
 
-# Keep a registry of multiple robots by id
 ROBOTS: Dict[str, Robot] = {}
-
 ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090)
 ROBOTS['go2_1'] = Go2(robot_id="go2_1", port=7070)
 
@@ -39,35 +34,37 @@ def ensure_connected(robot: Robot):
         raise HTTPException(status_code=400, detail=f"Robot '{robot}' is not connected.")
 
 # --------- Connection management ---------
-@app.post("/robots/{robot_id}/connection")
+@app.post("/robots/{robot_id}/connection/{connection_type}")
 async def connection(
-    robot_id: str = Path(..., description="Unique ID of the robot"),
-    req: ConnectRequest = None,
+    robot_id: str = Path(..., description="Unique ID of the robot. for example amr_1"),
+    connection_type: RequestType = Path(..., description="Type of connection action"),
+    req: Optional[ConnectRequest] = Path(..., description="ip of the robot and port of rosbridge"),
 ):
     """
     Connect or disconnect an existing robot by id.
+    Robot id is defined in the ROBOTS dict. For example,
+    to connect to amr_1, send a POST request to 
+    /robots/amr_1/connection/connect with body:
     Body fields: ip, port, request ∈ {'connect', 'disconnect'}
     """
-    try: 
-        if req is None or not req.request:
-            raise HTTPException(status_code=400, detail="Missing 'request' in body.")
-
-        request_type = req.request.lower()
+    try:
+        if req is None:
+            raise HTTPException(status_code=400, detail="Missing request body.")
 
         robot = get_robot(robot_id)
 
-        if request_type == "connect":
+        if connection_type == RequestType.CONNECT:
             robot.connect()
             return {"message": f"Robot '{robot_id}' connected"}
 
-        elif request_type == "disconnect":
-            robot.disconnect()  
+        elif connection_type == RequestType.DISCONNECT:
+            robot.disconnect()
             return {"message": f"Robot '{robot_id}' disconnected"}
+
     except TimeoutError as e:
-        # Provide a clear, actionable error to the client
         raise HTTPException(
             status_code=504,
-            detail=f"Failed to connect to ROS bridge for robot '{robot_id}': {str(e)}. "
+            detail=f"Failed to connect to ROS bridge for robot '{robot_id}': {str(e)}."
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -214,16 +211,3 @@ async def robot_publish_ws(websocket: WebSocket, robot_id: str):
             pass
 
 
-# # AI Support
-# @app.post("/assistant/ask")
-# async def ask(request: AskRequest):
-#     try:
-#         question = request.question
-#         response = support.ask(question)
-#         return {"response": response}
-
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-    
- 
