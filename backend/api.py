@@ -1,24 +1,21 @@
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException, Path, Body
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
-
-from roslibpy import Ros
 from typing import Dict, Optional
+from enum import Enum
 
-from msgs.Twist import TwistMessageRequest
-from msgs.Pose import PoseMessageRequest
-from msgs.GoalPose import GoalPoseMessageRequest
-from srv.SaveMap import SaveMapMessageRequest
-from srv.Trigger import TriggerMessageRequest 
-from connection.ConnectRequest import ConnectRequest, RequestType
-
+from ros_bridge.connection.ConnectRequest import ConnectRequest, RequestType
+from routers.users import router as users_router 
 from robot import Robot  
 from amr_robot import AMR
 from go2_robot import Go2 
 
-
 app = FastAPI()
 
+class Robots(str, Enum):
+    AMR_1 = "amr_1"
+    GO2_1 = "go2_1"
+    
 ROBOTS: Dict[str, Robot] = {}
 ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090)
 ROBOTS['go2_1'] = Go2(robot_id="go2_1", port=7070)
@@ -36,9 +33,9 @@ def ensure_connected(robot: Robot):
 # --------- Connection management ---------
 @app.post("/robots/{robot_id}/connection/{connection_type}")
 async def connection(
-    robot_id: str = Path(..., description="Unique ID of the robot. for example amr_1"),
+    robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
     connection_type: RequestType = Path(..., description="Type of connection action"),
-    req: Optional[ConnectRequest] = Path(..., description="ip of the robot and port of rosbridge"),
+    req: Optional[ConnectRequest] = Body(..., description="ip of the robot and port of rosbridge"),
 ):
     """
     Connect or disconnect an existing robot by id.
@@ -71,7 +68,14 @@ async def connection(
 
 # Mapping
 @app.post("/robots/{robot_id}/mapping/start")
-async def start_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def start_mapping(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+    """
+    Start mapping service on the robot.
+    This will start the SLAM process and generate a map of the environment.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to start mapping on amr_1,
+    send a POST request to /robots/amr_1/mapping/start
+    """
     try: 
         robot = get_robot(robot_id)
         robot.start_mapping()
@@ -81,7 +85,14 @@ async def start_mapping(robot_id: str = Path(..., description="Unique ID of the 
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/robots/{robot_id}/mapping/stop")
-async def stop_mapping(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def stop_mapping(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+    """
+    Stop mapping service on the robot.
+    This will stop the SLAM process and save the generated map.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to stop mapping on amr_1,
+    send a POST request to /robots/amr_1/mapping/stop
+    """
     try: 
         robot = get_robot(robot_id)
         robot.stop_mapping()
@@ -92,7 +103,14 @@ async def stop_mapping(robot_id: str = Path(..., description="Unique ID of the r
 
 # exploring service (for auto mapping)
 @app.post("/robots/{robot_id}/exploring/start")
-async def start_exploring(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def start_exploring(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+    """
+    Start exploring service on the robot.
+    This will start the auto mapping process where the robot will explore the environment and generate a map of the environment.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to start exploring on amr_1,
+    send a POST request to /robots/amr_1/exploring/start
+    """
     try: 
         robot = get_robot(robot_id)
         robot.start_exploring()
@@ -103,7 +121,14 @@ async def start_exploring(robot_id: str = Path(..., description="Unique ID of th
     
 
 @app.post("/robots/{robot_id}/exploring/stop")
-async def stop_exploring(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def stop_exploring(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+    """
+    Stop exploring service on the robot.
+    This will stop the auto mapping process and save the generated map.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to stop exploring on amr_1,
+    send a POST request to /robots/amr_1/exploring/stop
+    """
     try: 
         robot = get_robot(robot_id)
         robot.stop_exploring()
@@ -114,7 +139,14 @@ async def stop_exploring(robot_id: str = Path(..., description="Unique ID of the
     
 # navigation service (for navigation)
 @app.post("/robots/{robot_id}/navigation/start")
-async def start_navigation(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def start_navigation(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+    """
+    Start navigation service on the robot.
+    This will start the navigation process where the robot will navigate to the goal pose.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to start navigation on amr_1,
+    send a POST request to /robots/amr_1/navigation/start
+    """
     try: 
         robot = get_robot(robot_id)
         robot.start_navigation()
@@ -125,7 +157,14 @@ async def start_navigation(robot_id: str = Path(..., description="Unique ID of t
     
 
 @app.post("/robots/{robot_id}/navigation/stop")
-async def stop_navigation(robot_id: str = Path(..., description="Unique ID of the robot")):
+async def stop_navigation(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+    """
+    Stop navigation service on the robot.
+    This will stop the navigation process and save the generated map.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to stop navigation on amr_1,
+    send a POST request to /robots/amr_1/navigation/stop
+    """
     try: 
         robot = get_robot(robot_id)
         robot.stop_navigation()
@@ -135,7 +174,7 @@ async def stop_navigation(robot_id: str = Path(..., description="Unique ID of th
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.websocket("/robots/{robot_id}/ws/subscribing")
-async def robot_ws(websocket: WebSocket, robot_id: str):
+async def robot_ws(websocket: WebSocket, robot_id: Robots):                    
     await websocket.accept()
 
     robot = get_robot(robot_id)
@@ -170,7 +209,7 @@ async def robot_ws(websocket: WebSocket, robot_id: str):
         print("WS error:", e)
 
 @app.websocket("/robots/{robot_id}/ws/publish")
-async def robot_publish_ws(websocket: WebSocket, robot_id: str):
+async def robot_publish_ws(websocket: WebSocket, robot_id: Robots):
     await websocket.accept()
     robot = get_robot(robot_id)
 
