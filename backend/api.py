@@ -1,16 +1,21 @@
 from fastapi import FastAPI, HTTPException, Path, Body
+from fastapi import Depends
 from fastapi import WebSocket, WebSocketDisconnect
 import asyncio
 from typing import Dict, Optional
 from enum import Enum
 
 from ros_bridge.connection.ConnectRequest import ConnectRequest, RequestType
-from routers.users import router as users_router 
+from routers.users import router as users_router
+from routers.users import authenticate
 from robot import Robot  
 from amr_robot import AMR
 from go2_robot import Go2 
 
-app = FastAPI()
+app = FastAPI(title="AMR Web Dashboard API",
+              description="API for managing AMR robots, including connection, mapping, exploring, and navigation services.", 
+              version="1.0.0",)
+app.include_router(users_router)
 
 class Robots(str, Enum):
     AMR_1 = "amr_1"
@@ -31,12 +36,14 @@ def ensure_connected(robot: Robot):
         raise HTTPException(status_code=400, detail=f"Robot '{robot}' is not connected.")
 
 # --------- Connection management ---------
-@app.post("/robots/{robot_id}/connection/{connection_type}")
+@app.post("/robots/{robot_id}/connection/{connection_type}", 
+          tags=["main"])
 async def connection(
+    current_user=Depends(authenticate),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
     connection_type: RequestType = Path(..., description="Type of connection action"),
     req: Optional[ConnectRequest] = Body(..., description="ip of the robot and port of rosbridge"),
-):
+    ):
     """
     Connect or disconnect an existing robot by id.
     Robot id is defined in the ROBOTS dict. For example,
@@ -67,8 +74,12 @@ async def connection(
         raise HTTPException(status_code=500, detail=str(e))
 
 # Mapping
-@app.post("/robots/{robot_id}/mapping/start")
-async def start_mapping(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+@app.post("/robots/{robot_id}/mapping/start", 
+          tags=["main"])
+async def start_mapping(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    ):
     """
     Start mapping service on the robot.
     This will start the SLAM process and generate a map of the environment.
@@ -84,8 +95,12 @@ async def start_mapping(robot_id: Robots = Path(..., description="Unique ID of t
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/robots/{robot_id}/mapping/stop")
-async def stop_mapping(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+@app.post("/robots/{robot_id}/mapping/stop", 
+          tags=["main"])
+async def stop_mapping(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    ):
     """
     Stop mapping service on the robot.
     This will stop the SLAM process and save the generated map.
@@ -102,8 +117,12 @@ async def stop_mapping(robot_id: Robots = Path(..., description="Unique ID of th
         raise HTTPException(status_code=500, detail=str(e))
 
 # exploring service (for auto mapping)
-@app.post("/robots/{robot_id}/exploring/start")
-async def start_exploring(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+@app.post("/robots/{robot_id}/exploring/start", 
+          tags=["main"])
+async def start_exploring(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    ):
     """
     Start exploring service on the robot.
     This will start the auto mapping process where the robot will explore the environment and generate a map of the environment.
@@ -120,8 +139,12 @@ async def start_exploring(robot_id: Robots = Path(..., description="Unique ID of
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@app.post("/robots/{robot_id}/exploring/stop")
-async def stop_exploring(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+@app.post("/robots/{robot_id}/exploring/stop", 
+          tags=["main"])
+async def stop_exploring(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    ):
     """
     Stop exploring service on the robot.
     This will stop the auto mapping process and save the generated map.
@@ -138,8 +161,12 @@ async def stop_exploring(robot_id: Robots = Path(..., description="Unique ID of 
         raise HTTPException(status_code=500, detail=str(e))
     
 # navigation service (for navigation)
-@app.post("/robots/{robot_id}/navigation/start")
-async def start_navigation(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+@app.post("/robots/{robot_id}/navigation/start", 
+          tags=["main"])
+async def start_navigation(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    ):
     """
     Start navigation service on the robot.
     This will start the navigation process where the robot will navigate to the goal pose.
@@ -156,8 +183,12 @@ async def start_navigation(robot_id: Robots = Path(..., description="Unique ID o
         raise HTTPException(status_code=500, detail=str(e))
     
 
-@app.post("/robots/{robot_id}/navigation/stop")
-async def stop_navigation(robot_id: Robots = Path(..., description="Unique ID of the robot")):
+@app.post("/robots/{robot_id}/navigation/stop", 
+          tags=["main"])
+async def stop_navigation(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    ):
     """
     Stop navigation service on the robot.
     This will stop the navigation process and save the generated map.
