@@ -1,11 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import APIRouter, Depends, HTTPException
+from routers.auth import authenticate
 import sqlite3
 from pydantic import BaseModel
-import secrets
 
 router = APIRouter(prefix="/user", tags=["users"])
-security = HTTPBasic()
 
 conn = sqlite3.connect("database/users.db", check_same_thread=False)
 cursor = conn.cursor()
@@ -30,41 +28,6 @@ class User(BaseModel):
     email: str
     user_name: str
     password: str
-
-
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    username = credentials.username
-    password = credentials.password
-
-    cursor.execute("SELECT * FROM users WHERE user_name = ?", (username,))
-    user = cursor.fetchone()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
-    stored_password = user[5]
-
-    correct_password = secrets.compare_digest(password, stored_password)
-
-    if not correct_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Wrong password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-
-    return {
-        "id": user[0],
-        "first_name": user[1],
-        "last_name": user[2],
-        "email": user[3],
-        "user_name": user[4]
-    }
-
 
 # create user
 @router.post("/create")
@@ -115,8 +78,7 @@ async def get_user(user_id: int, current_user=Depends(authenticate)):
 # delete user
 @router.delete("/delete/{user_id}")
 async def delete_user(user_id: int, current_user=Depends(authenticate)):
-    """ 
-    Delete a user by ID. Requires authentication."""
+    """ Delete a user by ID. Requires authentication. """
     cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
 
