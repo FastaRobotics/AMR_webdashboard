@@ -1,10 +1,10 @@
-from fastapi import APIrouter, Depends
+from fastapi import APIRouter, Depends
 from routers.auth import authenticate
 from routers.connection import * 
 import sqlite3
 from pydantic import BaseModel
 
-router = APIrouter(prefix="/mapping", tags=["mapping"])
+router = APIRouter(prefix="/mapping", tags=["mapping"])
 
 # Mapping
 @router.post("/{robot_id}/start")

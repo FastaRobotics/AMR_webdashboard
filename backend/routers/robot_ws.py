@@ -4,9 +4,9 @@ from routers.auth import authenticate
 from routers.connection import *
 import asyncio 
 
+
 router = APIRouter(prefix="/socket", tags=["socket"])
-
-
+        
 @router.websocket("/{robot_id}/ws/subscribe/{topic_name}")
 async def robot_ws(
     websocket: WebSocket,

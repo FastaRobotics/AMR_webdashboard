@@ -17,7 +17,7 @@ class SubscribableTopics(str, Enum):
 SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = {
     SubscribableTopics.odom: "nav_msgs/msg/Odometry",
     SubscribableTopics.tf: "tf2_msgs/msg/TFMessage",
-    SubscribableTopics.image_compressed: "sensor_msgs/msg/CompressedImage",
+    SubscribableTopics.image_compressed: "/zed/zed_node/right/color/raw/image/compressed",
     SubscribableTopics.depth_image_compressed: "sensor_msgs/msg/CompressedImage",
     SubscribableTopics.imu: "sensor_msgs/msg/Imu",
     SubscribableTopics.battery_state: "sensor_msgs/msg/BatteryState",

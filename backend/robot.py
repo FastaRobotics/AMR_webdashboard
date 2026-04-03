@@ -3,6 +3,8 @@ from roslibpy import Ros
 from ros_bridge.publisher import RosPublisher
 from ros_bridge.subscriber import RosSubscriber
 from ros_bridge.service_client import RosServiceClient
+import base64
+import io
 
 
 class RobotStatus(Enum):
@@ -115,6 +117,51 @@ class Robot:
             
         print(f"[{self.robot_id}] Subscribed to {topic}")
 
+    def subscribe_image(self, topic: str = None):
+        """
+        Subscribe to a ROS2 CompressedImage topic via roslibpy.
+        Stores the latest frame in self.subscribers[topic].last_frame
+        """
+        if not self.is_connected():
+            raise RuntimeError(f"[{self.robot_id}] Cannot subscribe: Not connected.")
+
+        # Use default camera topic if not specified
+        topic = topic or self.SubscribableTopics.image_compressed
+
+        # Check if already subscribed
+        if topic in self.subscribers:
+            print(f"[{self.robot_id}] Already subscribed to {topic}")
+            return
+
+        # Define callback for incoming messages
+        def image_callback(msg):
+            # msg['data'] is base64-encoded JPEG
+            image_bytes = base64.b64decode(msg['data'].encode('ascii'))
+            # store last frame in-memory
+            self.subscribers[topic].last_frame = io.BytesIO(image_bytes)
+
+        # Create the subscriber
+        subscriber = RosSubscriber(
+            ros=self.ros,
+            topic_name=topic,
+            message_type='sensor_msgs/CompressedImage'
+        )
+        subscriber.subscribe(callback=image_callback)
+        subscriber.last_frame = None  # initialize storage
+        self.subscribers[topic] = subscriber
+
+        print(f"[{self.robot_id}] Subscribed to compressed image topic {topic}")
+
+    def get_last_image(self, topic: str = None) -> io.BytesIO | None:
+        """
+        Returns the last received image as a BytesIO object for the given topic.
+        """
+        topic = topic or self.SubscribableTopics.image_compressed
+        if topic not in self.subscribers:
+            raise KeyError(f"[{self.robot_id}] Not subscribed to {topic}")
+
+        return getattr(self.subscribers[topic], 'last_frame', None) 
+    
     def get_last_message(self, topic: str):
         if topic not in self.subscribers:
             raise KeyError(f"[{self.robot_id}] Not subscribed to {topic}")
@@ -191,10 +238,9 @@ class Robot:
     # --------------------
     # Status
     # --------------------
-    def get_status(self):
-        ros_status = self.ros_processor.status()
-        ros_status["connection"] = self.is_connected()
-        ros_status["robot_status"] = self.status.value
+    def get_connection_status(self):
+        ros_status = {}
+        ros_status["connection"] = self.ros.is_connected() if self.ros else False
         return ros_status
     
     

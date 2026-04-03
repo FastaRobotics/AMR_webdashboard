@@ -64,10 +64,15 @@ async def robot_connection(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/status")
-async def connection_status(current_user=Depends(authenticate),):
-    return {"message": "Connection status: Connected"}
-
-@router.get("/available_robots")
-async def available_robots(current_user=Depends(authenticate),):
-    return {"message": "Available robots: amr_1, go2_1"}
+@router.get("/{robot_id}/status")
+async def connection_status(
+    current_user=Depends(authenticate),
+    robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1")):
+    """ Get the connection status of a robot. Returns whether the robot is connected to ROS or not."""
+    try:
+        robot = get_robot(robot_id)
+        status = robot.get_connection_status()
+        return {"message": f"Connection status for {robot_id}: {'Connected' if status['connection'] else 'Disconnected'}"}
+    
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Robot '{robot_id}' not found")
