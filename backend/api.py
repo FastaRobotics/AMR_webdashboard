@@ -8,6 +8,7 @@ from routers.mapping import router as mapping_router
 from routers.navigation import router as navigation_router
 from routers.connection import router as connection_router
 from routers.robot_ws import router as robot_ws_router
+from routers.streaming import router as streaming_router
 
 app = FastAPI(title="Fasta Web Dashboard API",
               description="API for managing Fasta robots (AMR and Quadruped), including connection, mapping, exploring, and navigation services.", 
@@ -26,6 +27,6 @@ app.include_router(mapping_router)
 app.include_router(navigation_router)
 app.include_router(connection_router)    
 app.include_router(robot_ws_router)
-
+app.include_router(streaming_router)
 
 

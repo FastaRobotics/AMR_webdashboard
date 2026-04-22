@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS users (
 """)
 conn.commit()
 
+class LoginRequest(BaseModel):
+    user_name: str
+    password: str
 
 class User(BaseModel):
     id: int
@@ -89,3 +92,4 @@ async def delete_user(user_id: int, current_user=Depends(authenticate)):
     conn.commit()
 
     return {"message": f"user with id {user_id} deleted"}
+

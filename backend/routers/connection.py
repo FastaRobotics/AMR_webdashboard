@@ -3,6 +3,7 @@ from fastapi import Body, Path
 from routers.auth import authenticate   
 from typing import Dict, Optional
 from enum import Enum
+import random
 
 from ros_bridge.connection.ConnectRequest import ConnectRequest, RequestType
 from robot import Robot  
@@ -76,3 +77,45 @@ async def connection_status(
     
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Robot '{robot_id}' not found")
+
+@router.get("/robot_list")
+async def robot_list():
+    return [
+        {
+            "id": robot_id,
+            "type": robot.__class__.__name__
+        }
+        for robot_id, robot in ROBOTS.items()
+    ]
+
+@router.get("/diagnostics")
+async def diagnostics():
+    return {
+        "cpu": {
+            "usage_percent": round(random.uniform(10, 65), 2),
+            "temperature_c": round(random.uniform(45, 75), 1),
+        },
+        "gpu": {
+            "usage_percent": round(random.uniform(5, 80), 2),
+            "temperature_c": round(random.uniform(50, 85), 1),
+        },
+        "memory": {
+            "used_gb": round(random.uniform(4, 14), 2),
+            "total_gb": 16,
+            "usage_percent": round(random.uniform(30, 85), 2),
+        },
+        "camera": {
+            "zed_status": random.choice(["online", "offline", "degraded"]),
+            "frame_rate_fps": random.choice([15, 30, 60]),
+            "resolution": "1280x720"
+        },
+        "motors": {
+            "status": random.choice(["ok", "warning", "error"]),
+            "active_motors": 4,
+            "fault_code": None if random.random() > 0.2 else "MOTOR_OVERCURRENT"
+        },
+        "system": {
+            "uptime_sec": random.randint(1000, 50000),
+            "robot_state": random.choice(["idle", "moving", "charging", "error"])
+        }
+    }
