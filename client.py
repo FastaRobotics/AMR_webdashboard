@@ -1,13 +1,16 @@
-from fastrtc import Stream
-import numpy as np
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+
+import jwt
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+from pydantic import BaseModel
 
 
-def flip_vertically(image):
-    return np.flip(image, axis=0)
+password_hash = PasswordHash.recommended()
+DUMMY_HASH = password_hash.hash("dummypassword")
 
-
-stream = Stream(
-    handler=flip_vertically,
-    modality="video",
-    mode="send-receive",
-)
+# print(DUMMY_HASH)
+print(password_hash.verify("dummypassword", DUMMY_HASH))

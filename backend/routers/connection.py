@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import Body, Path
-from routers.auth import authenticate   
+from routers.auth import get_current_user   
 from typing import Dict, Optional
 from enum import Enum
 import random
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/connection", tags=["connection"])
 
 @router.post("/{robot_id}/{type}")
 async def robot_connection(
-    current_user=Depends(authenticate),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
     type: ConnectionType = Path(..., description="Connect or Disconnect")
     ):
@@ -67,7 +67,7 @@ async def robot_connection(
 
 @router.get("/{robot_id}/status")
 async def connection_status(
-    current_user=Depends(authenticate),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1")):
     """ Get the connection status of a robot. Returns whether the robot is connected to ROS or not."""
     try:
@@ -79,7 +79,7 @@ async def connection_status(
         raise HTTPException(status_code=404, detail=f"Robot '{robot_id}' not found")
 
 @router.get("/robot_list")
-async def robot_list():
+async def robot_list(current_user=Depends(get_current_user),):
     return [
         {
             "id": robot_id,
@@ -89,7 +89,7 @@ async def robot_list():
     ]
 
 @router.get("/diagnostics")
-async def diagnostics():
+async def diagnostics(current_user=Depends(get_current_user),):
     return {
         "cpu": {
             "usage_percent": round(random.uniform(10, 65), 2),
@@ -117,5 +117,9 @@ async def diagnostics():
         "system": {
             "uptime_sec": random.randint(1000, 50000),
             "robot_state": random.choice(["idle", "moving", "charging", "error"])
+        },
+        "battery": {
+            "battery_level": random.randint(0, 100),
+            "battery_state": random.choice(["charged", "charging", "No charge"])
         }
     }

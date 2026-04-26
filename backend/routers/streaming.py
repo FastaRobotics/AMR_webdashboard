@@ -4,7 +4,7 @@ import numpy as np
 
 from fastapi import FastAPI, Request, APIRouter
 from fastapi.responses import StreamingResponse
-from routers.auth import authenticate
+from routers.auth import get_current_user
 from routers.connection import * 
 
 from aiortc import (
@@ -29,7 +29,7 @@ frame_lock = asyncio.Lock()
 # ─────────────────────────────
 @router.post("/offer")
 async def offer(request: Request,
-                current_user=Depends(authenticate),):
+                current_user=Depends(get_current_user),):
     params = await request.json()
 
     offer = RTCSessionDescription(
@@ -111,7 +111,7 @@ async def mjpeg_generator():
 
 
 @router.get("/video")
-async def video(current_user=Depends(authenticate),):
+async def video(current_user=Depends(get_current_user),):
     return StreamingResponse(
         mjpeg_generator(),
         media_type="multipart/x-mixed-replace; boundary=frame"

@@ -1,6 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi import APIRouter, Depends, HTTPException
-from routers.auth import authenticate
+from routers.auth import get_current_user
 from routers.connection import *
 import asyncio 
 
@@ -12,7 +12,7 @@ async def robot_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     topic_name: str,
-    current_user=Depends(authenticate)
+    current_user=Depends(get_current_user)
     ):                    
     await websocket.accept()
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from routers.auth import authenticate
+from routers.auth import get_current_user
 from routers.connection import * 
 import sqlite3
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ router = APIRouter(prefix="/mapping", tags=["mapping"])
 # Mapping
 @router.post("/{robot_id}/start")
 async def start_mapping(
-    current_user=Depends(authenticate),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot")
     ):
     """
@@ -29,7 +29,7 @@ async def start_mapping(
 
 @router.post("/{robot_id}/stop")
 async def stop_mapping(
-    current_user=Depends(authenticate),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot")
     ):
     """
@@ -48,7 +48,7 @@ async def stop_mapping(
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/save")
-async def save_mapping(current_user=Depends(authenticate),):
+async def save_mapping(current_user=Depends(get_current_user),):
     """ Save the current mapping.
     This will save the generated map to the database.
     only input is robot_id which is defined in the ROBOTS dict.
@@ -57,7 +57,7 @@ async def save_mapping(current_user=Depends(authenticate),):
     return {"message": "mapping saved"}
 
 @router.delete("/delete")
-async def delete_mapping(current_user=Depends(authenticate),):
+async def delete_mapping(current_user=Depends(get_current_user),):
     """ Delete the current mapping.
     This will delete the generated map from the database.
     only input is robot_id which is defined in the ROBOTS dict.
@@ -66,7 +66,7 @@ async def delete_mapping(current_user=Depends(authenticate),):
     return {"message": "mapping deleted"}
 
 @router.post("/save_location")
-async def save_location(current_user=Depends(authenticate),):
+async def save_location(current_user=Depends(get_current_user),):
     """ Save the current location of the robot.
     This will save the current location of the robot to the database.
     only input is robot_id which is defined in the ROBOTS dict.
@@ -75,7 +75,7 @@ async def save_location(current_user=Depends(authenticate),):
     return {"message": "location saved"}
 
 @router.post("/load_map")
-async def load_map(current_user=Depends(authenticate),):
+async def load_map(current_user=Depends(get_current_user),):
     """ Load a map for the robot.
     This will load a map from the database and set it as the current map for the robot.
     only input is robot_id which is defined in the ROBOTS dict.

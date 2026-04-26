@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBasic
-from routers.auth import authenticate
+from routers.auth import get_current_user
 from routers.connection import *
 import sqlite3
 from pydantic import BaseModel
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 # navigation service (for navigation)
 @router.post("/{robot_id}/start")
 async def start_navigation(
-    current_user=Depends(authenticate),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot")
     ):
     """

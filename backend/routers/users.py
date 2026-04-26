@@ -1,16 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException
-from routers.auth import authenticate
-import sqlite3
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import sqlite3
+
+from routers.auth import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/user", tags=["users"])
 
 conn = sqlite3.connect("database/users.db", check_same_thread=False)
 cursor = conn.cursor()
 
+# ===== DB =====
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT,
     last_name TEXT,
     email TEXT,
@@ -20,76 +22,50 @@ CREATE TABLE IF NOT EXISTS users (
 """)
 conn.commit()
 
-class LoginRequest(BaseModel):
-    user_name: str
-    password: str
-
-class User(BaseModel):
-    id: int
+# ===== MODELS =====
+class UserCreate(BaseModel):
     first_name: str
     last_name: str
     email: str
     user_name: str
     password: str
 
-# create user
-@router.post("/create")
-async def create_user(user: User):
-    """
-    Create a new user in the database.
-    """
-    cursor.execute("SELECT * FROM users WHERE user_name = ?", (user.user_name,))
-    existing = cursor.fetchone()
+class LoginRequest(BaseModel):
+    user_name: str
+    password: str
 
-    if existing:
-        raise HTTPException(status_code=400, detail="User already exists")
+# ===== CREATE USER =====
+@router.post("/create")
+async def create_user(user: UserCreate):
+    cursor.execute("SELECT * FROM users WHERE user_name = ?", (user.user_name,))
+    if cursor.fetchone():
+        raise HTTPException(status_code=400, detail="User exists")
+
+    hashed = hash_password(user.password)
 
     cursor.execute(
-        "INSERT INTO users VALUES (?, ?, ?, ?, ?, ?)",
-        (user.id, user.first_name, user.last_name, user.email, user.user_name, user.password)
+        "INSERT INTO users (first_name, last_name, email, user_name, password) VALUES (?, ?, ?, ?, ?)",
+        (user.first_name, user.last_name, user.email, user.user_name, hashed)
     )
-
     conn.commit()
 
-    return {"message": "user created", "username": user.user_name}
+    return {"message": "user created"}
 
-
-# get user
-@router.get("/{user_id}")
-async def get_user(user_id: int, current_user=Depends(authenticate)):
-    """ 
-    Get a user by ID. Requires authentication.
-    """
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+# ===== LOGIN =====
+@router.post("/login")
+async def login(data: LoginRequest):
+    cursor.execute("SELECT * FROM users WHERE user_name = ?", (data.user_name,))
     user = cursor.fetchone()
 
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if not verify_password(data.password, user[5]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token({"sub": user[4]})
 
     return {
-        "message": "authenticated",
-        "current_user": current_user["user_name"],
-        "user": {
-            "id": user[0],
-            "first_name": user[1],
-            "last_name": user[2],
-            "email": user[3],
-            "user_name": user[4]
-        }
+        "access_token": token,
+        "token_type": "bearer"
     }
-
-# delete user
-@router.delete("/delete/{user_id}")
-async def delete_user(user_id: int, current_user=Depends(authenticate)):
-    """ Delete a user by ID. Requires authentication. """
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-    user = cursor.fetchone()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-
-    return {"message": f"user with id {user_id} deleted"}
-
