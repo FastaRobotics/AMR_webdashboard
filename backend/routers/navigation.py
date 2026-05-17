@@ -57,7 +57,8 @@ async def start_exploring(
     ):
     """
     Start exploring service on the robot.
-    This will start the auto mapping process where the robot will explore the environment and generate a map of the environment.
+    This will start the auto mapping process where the robot
+    will explore the environment and generate a map of the environment.
     only input is robot_id which is defined in the ROBOTS dict.
     For example, to start exploring on amr_1,
     send a POST request to /robots/amr_1/exploring/start
