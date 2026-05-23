@@ -24,7 +24,7 @@ class Robot:
                  AVAILABLE_SERVICES,
                  SERVICE_MESSAGE_TYPES):
         self.robot_id = robot_id
-        self.host = "localhost"
+        self.host = "192.168.1.219"
         self.port = port
         self.status = RobotStatus.OFFLINE
         self.ros: Ros | None = None
