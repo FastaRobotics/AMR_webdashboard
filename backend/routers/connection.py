@@ -19,8 +19,8 @@ class ConnectionType(str, Enum):
     DISCONNECT = "disconnect"
 
 ROBOTS: Dict[str, Robot] = {}
-ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090)
-ROBOTS['go2_1'] = Go2(robot_id="go2_1", port=7070)
+ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090, host="192.168.1.219")
+ROBOTS['go2_1'] = Go2(robot_id="go2_1", port=7070, host="192.168.1.220")
 
 # --------- Helpers ---------
 def get_robot(robot_id: str) -> Robot:
@@ -38,19 +38,24 @@ router = APIRouter(prefix="/connection", tags=["connection"])
 async def robot_connection(
     current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
-    type: ConnectionType = Path(..., description="Connect or Disconnect")
+    type: ConnectionType = Path(..., description="Connect or Disconnect"), 
+    host: Optional[str] = Body(None, description="ROS bridge host IP address. Required for connect, ignored for disconnect"),
+    port: Optional[int] = Body(None, description="ROS bridge port. Required for connect, ignored for disconnect")
     ):
     """
     Connect an existing robot by id.
     Robot id is defined in the ROBOTS dict. For example,
     to connect to amr_1, send a POST request to 
-    /connection/connect/amr_1 with body:
+    /connection/connect/amr_1 with body {
+        "host": "192.168.1.219",
+        "port": 9090
+    } 
     """
     try:
         robot = get_robot(robot_id)
         
         if type == ConnectionType.CONNECT:
-            robot.connect()
+            robot.connect(host=host, port=port)
             return {"message": f"Robot '{robot_id}' connected"}
         
         elif type == ConnectionType.DISCONNECT:

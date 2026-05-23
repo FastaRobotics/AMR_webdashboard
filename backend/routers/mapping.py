@@ -21,8 +21,8 @@ async def start_mapping(
     """
     try: 
         robot = get_robot(robot_id)
-        robot.start_mapping()
-        return {"status": "map started", "robot_id": robot_id }
+        response = robot.start_mapping()
+        return {"status": "map started", "robot_id": robot_id, "response": response }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -50,8 +50,8 @@ async def stop_mapping(
         }
 
         robot = get_robot(robot_id)
-        robot.stop_mapping(request)
-        return {"status": "map stopped", "robot_id": robot_id }
+        response = robot.stop_mapping(request)
+        return {"status": "map stopped", "robot_id": robot_id, "response": response }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

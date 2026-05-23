@@ -22,8 +22,8 @@ async def start_navigation(
     """
     try: 
         robot = get_robot(robot_id)
-        robot.start_navigation()
-        return {"status": "exploring started", "robot_id": robot_id }
+        response = robot.start_navigation()
+        return {"status": "navigation started", "robot_id": robot_id, "response": response }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -43,8 +43,8 @@ async def stop_navigation(
     """
     try: 
         robot = get_robot(robot_id)
-        robot.stop_navigation()
-        return {"status": "navigation stopped", "robot_id": robot_id }
+        response = robot.stop_navigation()
+        return {"status": "navigation stopped", "robot_id": robot_id, "response": response }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -65,8 +65,8 @@ async def start_exploring(
     """
     try: 
         robot = get_robot(robot_id)
-        robot.start_exploring()
-        return {"status": "exploring started", "robot_id": robot_id }
+        response = robot.start_exploring()
+        return {"status": "exploring started", "robot_id": robot_id, "response": response }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -86,8 +86,8 @@ async def stop_exploring(
     """
     try: 
         robot = get_robot(robot_id)
-        robot.stop_exploring()
-        return {"status": "exploring stopped", "robot_id": robot_id }
+        response = robot.stop_exploring()
+        return {"status": "exploring stopped", "robot_id": robot_id, "response": response }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -17,6 +17,7 @@ class Robot:
     def __init__(self,
                  robot_id: str,
                  port: int,
+                 host: str,
                  PublishableTopics,  
                  PUBLISHABLE_TOPIC_MESSAGE_TYPES,  
                  SubscribableTopics, 
@@ -24,7 +25,7 @@ class Robot:
                  AVAILABLE_SERVICES,
                  SERVICE_MESSAGE_TYPES):
         self.robot_id = robot_id
-        self.host = "192.168.1.219"
+        self.host = host
         self.port = port
         self.status = RobotStatus.OFFLINE
         self.ros: Ros | None = None
@@ -41,11 +42,11 @@ class Robot:
     # --------------------
     # Connection Management
     # --------------------
-    def connect(self):
+    def connect(self, host: str = None, port: int = None):
         if self.ros and self.ros.is_connected:
             self.disconnect()
 
-        self.ros = Ros(host=self.host, port=self.port)
+        self.ros = Ros(host=host or self.host, port=port or self.port)
         self.ros.run()
 
         if not self.ros.is_connected:
@@ -201,39 +202,39 @@ class Robot:
     
     def start_mapping(self):
         service = self.AVAILABLE_SERVICES.start_mapping
-        self.call(service, {})
+        response = self.call(service, {})
         self.status = RobotStatus.RUN_TASK
-        print(f"[{self.robot_id}] Mapping started.")
+        return response
 
     def stop_mapping(self, request: dict = {}):
         service = self.AVAILABLE_SERVICES.stop_mapping_and_save_map
-        self.call(service, request)
+        response = self.call(service, request)
         self.status = RobotStatus.IDLE
-        print(f"[{self.robot_id}] Mapping stopped.")
+        return response
 
     def start_exploring(self):
         service = self.AVAILABLE_SERVICES.start_exploring
-        self.call(service, {})
+        response = self.call(service, {})
         self.status = RobotStatus.RUN_TASK
-        print(f"[{self.robot_id}] Exploring started.")
+        return response
 
     def stop_exploring(self):
         service = self.AVAILABLE_SERVICES.stop_exploring
-        self.call(service, {})
+        response = self.call(service, {})
         self.status = RobotStatus.IDLE
-        print(f"[{self.robot_id}] Exploring stopped.")
+        return response
 
     def start_navigation(self):
         service = self.AVAILABLE_SERVICES.start_navigation
-        self.call(service, {})
+        response = self.call(service, {})
         self.status = RobotStatus.IDLE
-        print(f"[{self.robot_id}] navigation started.")
+        return response
 
     def stop_navigation(self):
         service = self.AVAILABLE_SERVICES.stop_navigation
-        self.call(service, {})
+        response = self.call(service, {})
         self.status = RobotStatus.IDLE
-        print(f"[{self.robot_id}] navigation stopped.")
+        return response
 
     # --------------------
     # Status
