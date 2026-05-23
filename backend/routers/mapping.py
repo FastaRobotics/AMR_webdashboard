@@ -33,7 +33,7 @@ async def stop_mapping(
     robot_id: Robots = Path(..., description="Unique ID of the robot"),
     map_name: str = Body("latest", description="Name of the map to save"),
     save_visual_slam_map: bool = Body(True, description="Whether to save the visual SLAM map"),
-    localize_in_map: bool = Body(True, description="Whether to localize in the map after stopping mapping"),
+    overwrite_visual_slam_map_folder: bool = Body(True, description="Whether to overwrite the visual SLAM map folder"),
     ):
     """
     Stop mapping service on the robot.
@@ -46,7 +46,7 @@ async def stop_mapping(
         request = {
             "map_name": map_name,
             "save_visual_slam_map": save_visual_slam_map,
-            "localize_in_map": localize_in_map
+            "overwrite_visual_slam_map_folder": overwrite_visual_slam_map_folder,
         }
 
         robot = get_robot(robot_id)
