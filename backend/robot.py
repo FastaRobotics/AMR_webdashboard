@@ -198,7 +198,10 @@ class Robot:
 
         response = self.services[service].call(request)
         print(f"[{self.robot_id}] Called service {service} with request {request}, got response {response}")
-        return response
+        try:
+            return dict(response)
+        except Exception:
+            return response
     
     def start_mapping(self):
         service = self.AVAILABLE_SERVICES.start_mapping

@@ -39,7 +39,10 @@ class RosServiceClient:
         """
         request = ServiceRequest(service_request)
         response = self.service.call(request=request)
-        return response.response
+        try:
+            return dict(response)
+        except Exception:
+            return response
     
 
 

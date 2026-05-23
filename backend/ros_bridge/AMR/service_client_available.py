@@ -13,13 +13,13 @@ class AvailableServices(str, Enum):
 
 
 SERVICE_MESSAGE_TYPES = {
-    AvailableServices.start_mapping: "std_srv/srv/Trigger", 
+    AvailableServices.start_mapping: "std_srvs/srv/Trigger", 
     AvailableServices.stop_mapping_and_save_map: "robot_msgs/srv/SaveMapByName", 
-    AvailableServices.start_exploring: "std_srv/srv/Trigger",
-    AvailableServices.stop_exploring: "std_srv/srv/Trigger",
-    AvailableServices.start_navigation: "std_srv/srv/Trigger",
+    AvailableServices.start_exploring: "std_srvs/srv/Trigger",
+    AvailableServices.stop_exploring: "std_srvs/srv/Trigger",
+    AvailableServices.start_navigation: "std_srvs/srv/Trigger",
     AvailableServices.start_navigation_with_map: "robot_msgs/srv/LoadMapByName",
-    AvailableServices.stop_navigation: "std_srv/srv/Trigger",
+    AvailableServices.stop_navigation: "std_srvs/srv/Trigger",
     AvailableServices.load_map_by_name: "robot_msgs/srv/LoadMapByName",
 }
 
