@@ -199,9 +199,9 @@ class Robot:
         print(f"[{self.robot_id}] Called service {service} with request {request}, got response {response}")
         return response
     
-    def start_mapping(self):
+    def start_mapping(self, request: dict = {}):
         service = self.AVAILABLE_SERVICES.start_mapping
-        self.call(service, {})
+        self.call(service, request)
         self.status = RobotStatus.RUN_TASK
         print(f"[{self.robot_id}] Mapping started.")
 

@@ -30,7 +30,10 @@ async def start_mapping(
 @router.post("/{robot_id}/stop")
 async def stop_mapping(
     current_user=Depends(get_current_user),
-    robot_id: Robots = Path(..., description="Unique ID of the robot")
+    robot_id: Robots = Path(..., description="Unique ID of the robot"),
+    map_name: str = Body("latest", description="Name of the map to save"),
+    save_visual_slam_map: bool = Body(True, description="Whether to save the visual SLAM map"),
+    localize_in_map: bool = Body(True, description="Whether to localize in the map after stopping mapping"),
     ):
     """
     Stop mapping service on the robot.
@@ -40,8 +43,14 @@ async def stop_mapping(
     send a POST request to /robots/amr_1/mapping/stop
     """
     try: 
+        request = {
+            "map_name": map_name,
+            "save_visual_slam_map": save_visual_slam_map,
+            "localize_in_map": localize_in_map
+        }
+
         robot = get_robot(robot_id)
-        robot.stop_mapping()
+        robot.stop_mapping(request)
         return {"status": "map stopped", "robot_id": robot_id }
 
     except Exception as e:
