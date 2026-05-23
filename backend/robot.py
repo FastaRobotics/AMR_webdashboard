@@ -230,6 +230,12 @@ class Robot:
         self.status = RobotStatus.IDLE
         return response
 
+    def start_navigation_with_map(self, request: dict):
+        service = self.AVAILABLE_SERVICES.start_navigation_with_map
+        response = self.call(service, request)
+        self.status = RobotStatus.RUN_TASK
+        return response
+
     def stop_navigation(self):
         service = self.AVAILABLE_SERVICES.stop_navigation
         response = self.call(service, {})

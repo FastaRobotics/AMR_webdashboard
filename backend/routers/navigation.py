@@ -27,6 +27,38 @@ async def start_navigation(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{robot_id}/start_with_map")
+async def start_navigation_with_map(
+    current_user=Depends(get_current_user),
+    robot_id: Robots = Path(..., description="Unique ID of the robot"),
+    map_name: str = Body("latest", description="Name of the map to save"),
+    localize_after_load: bool = Body(True, description="Whether to localize after load map."),
+    localize_failure_is_fatal: bool = Body(True, description="Whether localization failure is fatal and terminate the navigation."),
+    pose_hint_position_xyz: list = Body([0.0, 0.0, 0.0], description="Position hint for localization."),
+    pose_hint_orientation_xyzw: list = Body([0.0, 0.0, 0.0, 1.0], description="Orientation hint for localization."),
+    ):
+    """
+    Start navigation service on the robot with map name.
+    This will start the navigation process where the robot will navigate to the goal pose.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to start navigation on amr_1,
+    send a POST request to /robots/amr_1/navigation/start_with_map
+    """
+    try: 
+        request = {
+            "map_name": map_name,
+            "localize_after_load": localize_after_load,
+            "localize_failure_is_fatal": localize_failure_is_fatal,
+            "pose_hint_position_xyz": pose_hint_position_xyz,
+            "pose_hint_orientation_xyzw": pose_hint_orientation_xyzw,            
+        }
+        robot = get_robot(robot_id)
+        response = robot.start_navigation_with_map(request)
+        return {"status": "navigation started", "robot_id": robot_id, "response": response }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
     
 
 @router.post("/{robot_id}/stop")
