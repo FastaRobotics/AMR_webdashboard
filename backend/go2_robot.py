@@ -6,8 +6,8 @@ from robot import Robot
 
 
 class Go2 (Robot):
-    def __init__(self, robot_id: str, port: int):
-        super().__init__(robot_id, port,
+    def __init__(self, robot_id: str, host: str, port: int):
+        super().__init__(robot_id, host, port,
                          PublishableTopics=PublishableTopics,
                          PUBLISHABLE_TOPIC_MESSAGE_TYPES=PUBLISHABLE_TOPIC_MESSAGE_TYPES, 
                          SubscribableTopics= SubscribableTopics,
