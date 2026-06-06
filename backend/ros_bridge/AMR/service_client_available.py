@@ -10,6 +10,8 @@ class AvailableServices(str, Enum):
     stop_navigation = "/stop/navigation"
     start_exploring = "/mapping_service_node/start_exploring"
     stop_exploring = "/mapping_service_node/stop_exploring"
+    webrtc_start = "/webrtc/start"
+    # backend/ros_bridge/AMR/service_client_available.py
 
 
 SERVICE_MESSAGE_TYPES = {
@@ -21,5 +23,6 @@ SERVICE_MESSAGE_TYPES = {
     AvailableServices.start_navigation_with_map: "robot_msgs/srv/LoadMapByName",
     AvailableServices.stop_navigation: "std_srvs/srv/Trigger",
     AvailableServices.load_map_by_name: "robot_msgs/srv/LoadMapByName",
+    AvailableServices.webrtc_start: "std_srvs/srv/Trigger",
 }
 

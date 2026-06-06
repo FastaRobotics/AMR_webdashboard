@@ -12,7 +12,6 @@ async def robot_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     topic_name: str,
-    current_user=Depends(get_current_user)
     ):                    
     await websocket.accept()
 
@@ -31,13 +30,13 @@ async def robot_ws(
             data = {
                 "robot_id": robot_id,
                 "status": robot.status.value,
-                "odom": robot.get_last_message(robot.SubscribableTopics.odom),
-                "tf": robot.get_last_message(robot.SubscribableTopics.tf), 
+                # "odom": robot.get_last_message(robot.SubscribableTopics.odom),
+                # "tf": robot.get_last_message(robot.SubscribableTopics.tf), 
                 "map": robot.get_last_message(robot.SubscribableTopics.map)
             }
 
             await websocket.send_json(data)
-            await asyncio.sleep(0.05)  # 20Hz stream
+            await asyncio.sleep(0.1)  # 20Hz stream
 
     except WebSocketDisconnect:
         print(f"{robot_id} websocket disconnected")

@@ -36,7 +36,7 @@ router = APIRouter(prefix="/connection", tags=["connection"])
 
 @router.post("/{robot_id}/{type}")
 async def robot_connection(
-    current_user=Depends(get_current_user),
+    # current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
     type: ConnectionType = Path(..., description="Connect or Disconnect"), 
     host: Optional[str] = Body(None, description="ROS bridge host IP address. Required for connect, ignored for disconnect"),

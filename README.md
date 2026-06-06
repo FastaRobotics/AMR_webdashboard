@@ -1,11 +1,11 @@
 
-# Fasta Backend with fastapi + fastrtc + roslibpy
+# Fasta Backend with fastapi + webrtc + roslibpy
 
 This repository contains the backend for the Fasta robot dashboards, handling real-time robot data and communication.
 
 The project covers:
 - FastAPI server for REST APIs and WebSocket endpoints
-- FastRTC integration for real-time streaming
+- WebRTC integration for real-time streaming
 - Roslibpy to communicate with ROS bridges for multiple robots
 - Connection management for multiple robot clients simultaneously
 - Deployment-ready Docker setup for server hosting
