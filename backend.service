@@ -1,0 +1,22 @@
+[Unit]
+Description=AMR Backend FastAPI
+After=network.target
+
+[Service]
+Type=simple
+User=root
+
+WorkingDirectory=/root/AMR_webdashboard/backend
+
+Environment="PATH=/root/AMR_webdashboard/venv/bin"
+
+ExecStart=/root/AMR_webdashboard/venv/bin/uvicorn api:app --host 0.0.0.0 --port 8000
+
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

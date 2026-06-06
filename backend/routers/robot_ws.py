@@ -7,11 +7,10 @@ import asyncio
 
 router = APIRouter(prefix="/socket", tags=["socket"])
         
-@router.websocket("/{robot_id}/ws/subscribe/{topic_name}")
+@router.websocket("/{robot_id}/ws/subscribe/map")
 async def robot_ws(
     websocket: WebSocket,
     robot_id: Robots, 
-    topic_name: str,
     ):                    
     await websocket.accept()
 
@@ -22,21 +21,16 @@ async def robot_ws(
         await websocket.close()
         return
 
-    # subscribe once
-    robot.subscribe(topic_name)
-
     try:
         while True:
             data = {
                 "robot_id": robot_id,
                 "status": robot.status.value,
-                # "odom": robot.get_last_message(robot.SubscribableTopics.odom),
-                # "tf": robot.get_last_message(robot.SubscribableTopics.tf), 
-                "map": robot.get_last_message(robot.SubscribableTopics.map)
+                "map": robot.subscribe_map()
             }
 
             await websocket.send_json(data)
-            await asyncio.sleep(0.1)  # 20Hz stream
+            await asyncio.sleep(0.1)  # 10Hz stream
 
     except WebSocketDisconnect:
         print(f"{robot_id} websocket disconnected")
@@ -44,7 +38,69 @@ async def robot_ws(
     except Exception as e:
         print("WS error:", e)
 
-@router.websocket("/robots/{robot_id}/ws/publish")
+@router.websocket("/{robot_id}/ws/subscribe/odom")
+async def robot_ws(
+    websocket: WebSocket,
+    robot_id: Robots, 
+    ):                    
+    await websocket.accept()
+
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "odom": robot.subscribe_odom()
+            }
+
+            await websocket.send_json(data)
+            await asyncio.sleep(0.1)  # 10Hz stream
+
+    except WebSocketDisconnect:
+        print(f"{robot_id} websocket disconnected")
+
+    except Exception as e:
+        print("WS error:", e)
+
+@router.websocket("/{robot_id}/ws/subscribe/tf")
+async def robot_ws(
+    websocket: WebSocket,
+    robot_id: Robots, 
+    ):                    
+    await websocket.accept()
+
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "tf": robot.subscribe_tf()
+            }
+
+            await websocket.send_json(data)
+            await asyncio.sleep(0.1)  # 10Hz stream
+
+    except WebSocketDisconnect:
+        print(f"{robot_id} websocket disconnected")
+
+    except Exception as e:
+        print("WS error:", e)
+
+@router.websocket("/robots/{robot_id}/ws/publish/twist")
 async def robot_publish_ws(websocket: WebSocket, robot_id: Robots):
     await websocket.accept()
     robot = get_robot(robot_id)
@@ -63,10 +119,7 @@ async def robot_publish_ws(websocket: WebSocket, robot_id: Robots):
 
             if cmd_type == "twist":
                 robot.publish_twist(data["linear"], data["angular"])
-            elif cmd_type == "pose":
-                robot.publish_pose(data["position"], data["orientation"])
-            elif cmd_type == "goal_pose":
-                robot.publish_goal_pose(data["header"], data["pose"])
+
             else:
                 await websocket.send_json({"error": f"Unknown command type {cmd_type}"})
                 continue

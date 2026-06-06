@@ -5,10 +5,10 @@ This repository contains the backend for the Fasta robot dashboards, handling re
 
 The project covers:
 - FastAPI server for REST APIs and WebSocket endpoints
-- WebRTC integration for real-time streaming
-- Roslibpy to communicate with ROS bridges for multiple robots
-- Connection management for multiple robot clients simultaneously
-- Deployment-ready Docker setup for server hosting
+- WebRTC integration for real-time streaming of images.
+- Roslibpy to communicate with ROS bridges for multiple robots.
+- Connection management for multiple robot clients simultaneously.
+- Deployment-ready Docker setup for server hosting.
 
 The purpose of this project is to provide a scalable backend framework for robot dashboards, enabling real-time monitoring, control, and data streaming.
 
@@ -34,19 +34,6 @@ After installation, for running the UI, we use uvicorn CLI:
 
 ```bash
   uvicorn api:app --host 0.0.0.0 --port 8000 --reload
-```
-
-## Installation (Docker)
-
-To run docker file you need to pull the image then run it
-
-```bash
-docker pull fastarobotics/myimage:latest
-docker run -d \
-  --name mycontainer \
-  -p 8000:80 \
-  --restart unless-stopped \
-  fastarobotics/myimage:latest
 ```
 
 ## Authors
