@@ -15,15 +15,15 @@ class RobotStatus(Enum):
 
 class Robot:
     def __init__(self,
-                 robot_id: str,
-                 port: int,
-                 host: str,
-                 PublishableTopics,  
-                 PUBLISHABLE_TOPIC_MESSAGE_TYPES,  
-                 SubscribableTopics, 
-                 SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
-                 AVAILABLE_SERVICES,
-                 SERVICE_MESSAGE_TYPES):
+                robot_id: str,
+                port: int,
+                host: str,
+                PublishableTopics,  
+                PUBLISHABLE_TOPIC_MESSAGE_TYPES,  
+                SubscribableTopics, 
+                SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
+                AVAILABLE_SERVICES,
+                SERVICE_MESSAGE_TYPES):
         self.robot_id = robot_id
         self.host = host
         self.port = port

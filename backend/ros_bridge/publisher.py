@@ -3,11 +3,11 @@ import time
 
 class RosPublisher:
     def __init__(self, 
-                 ros,
-                 host='localhost', 
-                 port=9090, 
-                 topic_name='/chatter', 
-                 message_type='std_msgs/String'):
+                ros,
+                host='localhost', 
+                port=9090, 
+                topic_name='/chatter', 
+                message_type='std_msgs/String'):
         self.ros = ros
         self.host = host
         self.port = port

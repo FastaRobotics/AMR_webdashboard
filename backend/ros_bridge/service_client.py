@@ -5,11 +5,11 @@ from roslibpy import Service, ServiceRequest
 
 class RosServiceClient:
     def __init__(self, 
-                 ros: Ros,
-                 host: str = 'localhost', 
-                 port: int = 9090, 
-                 service_name: str = '/mapping_service_node/start_mapping', 
-                 service_type: str = 'std_msgs/srv/Trigger') -> None:
+                ros: Ros,
+                host: str = 'localhost', 
+                port: int = 9090, 
+                service_name: str = '/mapping_service_node/start_mapping', 
+                service_type: str = 'std_msgs/srv/Trigger') -> None:
         """Init function for calling different ros2 services
 
         Args:
@@ -22,8 +22,8 @@ class RosServiceClient:
         self.service_name = service_name 
         self.service_type = service_type
         self.service = Service(ros,
-                          self.service_name,
-                          self.service_type)
+                        self.service_name,
+                        self.service_type)
         
         print(f"[RosServiceClient] Connected to ROS at ws://{host}:{port}")
     
@@ -32,7 +32,7 @@ class RosServiceClient:
 
         Args:
             service_request (dict, optional): Dictionary request format to give data if needed
-                                              in request. Defaults to None.
+                                            in request. Defaults to None.
 
         Returns:
             dict: response of request

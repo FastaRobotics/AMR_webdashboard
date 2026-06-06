@@ -8,9 +8,9 @@ from robot import Robot
 class Go2 (Robot):
     def __init__(self, robot_id: str, host: str, port: int):
         super().__init__(robot_id, host, port,
-                         PublishableTopics=PublishableTopics,
-                         PUBLISHABLE_TOPIC_MESSAGE_TYPES=PUBLISHABLE_TOPIC_MESSAGE_TYPES, 
-                         SubscribableTopics= SubscribableTopics,
-                         SUBSCRIBABLE_TOPIC_MESSAGE_TYPES=SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
-                         AVAILABLE_SERVICES=AvailableServices,
-                         SERVICE_MESSAGE_TYPES= SERVICE_MESSAGE_TYPES)
+                        PublishableTopics=PublishableTopics,
+                        PUBLISHABLE_TOPIC_MESSAGE_TYPES=PUBLISHABLE_TOPIC_MESSAGE_TYPES, 
+                        SubscribableTopics= SubscribableTopics,
+                        SUBSCRIBABLE_TOPIC_MESSAGE_TYPES=SUBSCRIBABLE_TOPIC_MESSAGE_TYPES,
+                        AVAILABLE_SERVICES=AvailableServices,
+                        SERVICE_MESSAGE_TYPES= SERVICE_MESSAGE_TYPES)
