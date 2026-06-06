@@ -11,6 +11,7 @@ class PublishableTopics(str, Enum):
     point = "point"
     goal_pose = "goal_pose"
     initialpose = "initialpose"
+    diagnostics = "diagnostics"
 
 PUBLISHABLE_TOPIC_MESSAGE_TYPES = {
     PublishableTopics.chatter: "std_msgs/msg/String", 
@@ -20,6 +21,7 @@ PUBLISHABLE_TOPIC_MESSAGE_TYPES = {
     PublishableTopics.cmd_vel: "geometry_msgs/msg/Twist",
     PublishableTopics.point: "geometry_msgs/msg/Pose",
     PublishableTopics.goal_pose: "geometry_msgs/msg/PoseStamped",
-    PublishableTopics.initialpose: "geometry_msgs/msg/PoseWithCovarianceStamped"
+    PublishableTopics.initialpose: "geometry_msgs/msg/PoseWithCovarianceStamped", 
+    PublishableTopics.diagnostics: "diagnostic_msgs/msg/DiagnosticArray"
 }
 

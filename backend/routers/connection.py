@@ -39,8 +39,8 @@ async def robot_connection(
     # current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
     type: ConnectionType = Path(..., description="Connect or Disconnect"), 
-    host: Optional[str] = Body(None, description="ROS bridge host IP address. Required for connect, ignored for disconnect"),
-    port: Optional[int] = Body(None, description="ROS bridge port. Required for connect, ignored for disconnect")
+    host: Optional[str] = Body("0.0.0.0", description="ROS bridge host IP address. Required for connect, ignored for disconnect"),
+    port: Optional[int] = Body(9090, description="ROS bridge port. Required for connect, ignored for disconnect")
     ):
     """
     Connect an existing robot by id.
@@ -93,38 +93,3 @@ async def robot_list(current_user=Depends(get_current_user),):
         for robot_id, robot in ROBOTS.items()
     ]
 
-@router.get("/diagnostics")
-async def diagnostics(current_user=Depends(get_current_user),):
-    return {
-        "cpu": {
-            "usage_percent": round(random.uniform(10, 65), 2),
-            "temperature_c": round(random.uniform(45, 75), 1),
-        },
-        "gpu": {
-            "usage_percent": round(random.uniform(5, 80), 2),
-            "temperature_c": round(random.uniform(50, 85), 1),
-        },
-        "memory": {
-            "used_gb": round(random.uniform(4, 14), 2),
-            "total_gb": 16,
-            "usage_percent": round(random.uniform(30, 85), 2),
-        },
-        "camera": {
-            "zed_status": random.choice(["online", "offline", "degraded"]),
-            "frame_rate_fps": random.choice([15, 30, 60]),
-            "resolution": "1280x720"
-        },
-        "motors": {
-            "status": random.choice(["ok", "warning", "error"]),
-            "active_motors": 4,
-            "fault_code": None if random.random() > 0.2 else "MOTOR_OVERCURRENT"
-        },
-        "system": {
-            "uptime_sec": random.randint(1000, 50000),
-            "robot_state": random.choice(["idle", "moving", "charging", "error"])
-        },
-        "battery": {
-            "battery_level": random.randint(0, 100),
-            "battery_state": random.choice(["charged", "charging", "No charge"])
-        }
-    }

@@ -1,8 +1,10 @@
 from enum import Enum
+import time 
 from roslibpy import Ros
 from ros_bridge.publisher import RosPublisher
 from ros_bridge.subscriber import RosSubscriber
 from ros_bridge.service_client import RosServiceClient
+
 import base64
 import io
 
@@ -137,7 +139,12 @@ class Robot:
         topic = self.SubscribableTopics.map
         self.subscribe(topic)
         return self.get_last_message(topic)
-
+    
+    def subscribe_diagnostics(self):
+        topic = self.SubscribableTopics.diagnostics
+        self.subscribe(topic)
+        return self.get_last_message(topic)
+        
     # --------------------
     # Task Control
     # --------------------

@@ -12,6 +12,8 @@ class SubscribableTopics(str, Enum):
     point_cloud = "point_cloud"
     left_wheel_encoder = "left_wheel_encoder"
     right_wheel_encoder = "right_wheel_encoder"
+    diagnostics = "diagnostics"
+
 
 
 SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = {
@@ -24,5 +26,6 @@ SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = {
     SubscribableTopics.point_cloud: "sensor_msgs/msg/PointCloud2", 
     SubscribableTopics.left_wheel_encoder: "std_msgs/msg/Int32",     
     SubscribableTopics.right_wheel_encoder: "std_msgs/msg/Int32", 
-    SubscribableTopics.map: "nav_msgs/msg/OccupancyGrid"
+    SubscribableTopics.map: "nav_msgs/msg/OccupancyGrid",
+    SubscribableTopics.diagnostics: "diagnostic_msgs/msg/DiagnosticArray"
 }
