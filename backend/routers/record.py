@@ -9,7 +9,7 @@ router = APIRouter(prefix="/recording", tags=["recording"])
 # Recording
 @router.post("/{robot_id}/start")
 async def start_recording(
-    # current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot"),
     rosbag_name: str = Body("latest", description="Name of the rosbag to save"),
     ):
@@ -29,7 +29,7 @@ async def start_recording(
 
 @router.post("/{robot_id}/stop")
 async def stop_recording(
-    # current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot"),
     ):
     """
@@ -48,7 +48,7 @@ async def stop_recording(
 
 @router.post("/{robot_id}/status")
 async def recording_status(
-    # current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot"),
     ):
     """
@@ -66,7 +66,7 @@ async def recording_status(
     
 @router.delete("/{robot_id}/{rosbag_name}")
 async def delete_recording(
-    # current_user=Depends(get_current_user),
+    current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot"),
     rosbag_name: str = Path(..., description="Name of the rosbag to delete"),
     ):
