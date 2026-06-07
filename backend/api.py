@@ -9,6 +9,7 @@ from routers.navigation import router as navigation_router
 from routers.connection import router as connection_router
 from routers.robot_ws import router as robot_ws_router
 from routers.streaming import router as streaming_router, shutdown_webrtc
+from routers.record import router as record_router
 
 app = FastAPI(
     title="Fasta Web Dashboard API",
@@ -30,6 +31,7 @@ app.include_router(navigation_router)
 app.include_router(connection_router)
 app.include_router(robot_ws_router)
 app.include_router(streaming_router)
+app.include_router(record_router)
 
 app.add_event_handler("shutdown", shutdown_webrtc)
 

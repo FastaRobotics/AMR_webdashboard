@@ -206,6 +206,30 @@ class Robot:
         response = self.call(service, {})
         self.status = RobotStatus.IDLE
         return response
+    
+    def start_recording(self, rosbag_name: str):
+        service = self.AVAILABLE_SERVICES.start_recording
+        request = {"log_file_name": rosbag_name}
+        response = self.call(service, request)
+        self.status = RobotStatus.RUN_TASK
+        return response
+    
+    def stop_recording(self):
+        service = self.AVAILABLE_SERVICES.stop_recording
+        response = self.call(service, {})
+        self.status = RobotStatus.IDLE
+        return response
+    
+    def recording_status(self):
+        service = self.AVAILABLE_SERVICES.recording_status
+        response = self.call(service, {})
+        return response
+
+    def delete_recording(self, rosbag_name: str):
+        service = self.AVAILABLE_SERVICES.delete_recording
+        request = {"log_file_name": rosbag_name}
+        response = self.call(service, request)
+        return response
 
     # --------------------
     # Status

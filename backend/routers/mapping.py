@@ -17,7 +17,7 @@ async def start_mapping(
     This will start the SLAM process and generate a map of the environment.
     only input is robot_id which is defined in the ROBOTS dict.
     For example, to start mapping on amr_1,
-    send a POST request to /robots/amr_1/mapping/start
+    send a POST request to /amr_1/mapping/start
     """
     try: 
         robot = get_robot(robot_id)
@@ -40,7 +40,7 @@ async def stop_mapping(
     This will stop the SLAM process and save the generated map.
     only input is robot_id which is defined in the ROBOTS dict.
     For example, to stop mapping on amr_1,
-    send a POST request to /robots/amr_1/mapping/stop
+    send a POST request to /amr_1/mapping/stop
     """
     try: 
         request = {
@@ -56,38 +56,23 @@ async def stop_mapping(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/save")
-async def save_mapping(current_user=Depends(get_current_user),):
-    """ Save the current mapping.
-    This will save the generated map to the database.
-    only input is robot_id which is defined in the ROBOTS dict.
-    For example, to save mapping on amr_1,
-    send a POST request to /robots/amr_1/mapping/save"""
-    return {"message": "mapping saved"}
-
-@router.delete("/delete")
-async def delete_mapping(current_user=Depends(get_current_user),):
+@router.delete("/{robot_id}/delete")
+async def delete_mapping(current_user=Depends(get_current_user), 
+                         robot_id: Robots = Path(..., description="Unique ID of the robot"), 
+                         map_name: str = Body("latest", description="Name of the map to delete")):
     """ Delete the current mapping.
     This will delete the generated map from the database.
     only input is robot_id which is defined in the ROBOTS dict.
     For example, to delete mapping on amr_1,
-    send a DELETE request to /robots/amr_1/mapping/delete"""
+    send a DELETE request to /amr_1/mapping/delete"""
     return {"message": "mapping deleted"}
 
-@router.post("/save_location")
-async def save_location(current_user=Depends(get_current_user),):
+@router.post("/{robot_id}/save_location")
+async def save_location(current_user=Depends(get_current_user),
+                        robot_id: Robots = Path(..., description="Unique ID of the robot")):
     """ Save the current location of the robot.
     This will save the current location of the robot to the database.
     only input is robot_id which is defined in the ROBOTS dict.
     For example, to save location on amr_1,
-    send a POST request to /robots/amr_1/mapping/save_location"""
+    send a POST request to /amr_1/mapping/save_location"""
     return {"message": "location saved"}
-
-@router.post("/load_map")
-async def load_map(current_user=Depends(get_current_user),):
-    """ Load a map for the robot.
-    This will load a map from the database and set it as the current map for the robot.
-    only input is robot_id which is defined in the ROBOTS dict.
-    For example, to load a map on amr_1,
-    send a POST request to /robots/amr_1/mapping/load_map"""
-    return {"message": "map loaded"}

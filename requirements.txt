@@ -1,6 +1,6 @@
-chromadb==1.5.1
-fastapi==0.131.0
-pydantic==2.12.5
-roslibpy==1.8.1
+aiortc==1.9.0
+fastapi==0.136.3
+passlib[bcrypt]==1.7.4
+pydantic==2.13.4
 python-jose[cryptography]==3.5.0
-passlib[bcrypt]
+roslibpy==1.8.1
