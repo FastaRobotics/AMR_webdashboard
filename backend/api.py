@@ -33,6 +33,7 @@ app.include_router(robot_ws_router)
 app.include_router(streaming_router)
 app.include_router(record_router)
 
-app.add_event_handler("shutdown", shutdown_webrtc)
-
+@app.on_event("shutdown")
+async def shutdown_event():
+    await shutdown_webrtc()
 
