@@ -87,7 +87,8 @@ class Robot:
         self.publishers[topic].publish_once(message)
         self.publishers[topic].close()
         print(f"[{self.robot_id}] Published to {topic}: {message}")
-
+        return {"status": "published", "topic": topic, "message": message}
+    
     def publish_string(self, data: str):
         topic = self.PublishableTopics.chatter
         self.publish(topic, {"data": data})
@@ -103,6 +104,11 @@ class Robot:
     def publish_goal_pose(self, header: dict, pose: dict):
         topic = self.PublishableTopics.goal_pose
         self.publish(topic, {"header": header, "pose": pose})
+
+    def publish_emergency_stop(self, emergency_stop: bool):
+        topic = self.PublishableTopics.emergency_stop
+        response = self.publish(topic, {"data": emergency_stop})
+        return response
 
     # --------------------
     # Subscriber Methods
@@ -142,6 +148,11 @@ class Robot:
     
     def subscribe_diagnostics(self):
         topic = self.SubscribableTopics.diagnostics
+        self.subscribe(topic)
+        return self.get_last_message(topic)
+    
+    def subscribe_path(self):
+        topic = self.SubscribableTopics.path
         self.subscribe(topic)
         return self.get_last_message(topic)
         
@@ -188,6 +199,10 @@ class Robot:
         response = self.call(service, {})
         self.status = RobotStatus.IDLE
         return response
+
+    def emergency_stop(self):
+        self.publish_emergency_stop(True)
+        return {"status": "Emergency stop activated"}
 
     def start_navigation(self):
         service = self.AVAILABLE_SERVICES.start_navigation

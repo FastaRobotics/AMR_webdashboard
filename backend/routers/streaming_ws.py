@@ -5,17 +5,17 @@ from routers.connection import *
 import asyncio 
 
 
-router = APIRouter(prefix="/socket", tags=["socket"])
+router = APIRouter(prefix="/streaming_socket", tags=["streaming_socket"])
         
 @router.websocket("/{robot_id}/ws/subscribe/map")
-async def robot_ws(
+async def map_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     ):
     """
     WebSocket endpoint to subscribe to robot map updates.
     
-    URL: ws://localhost:8000/socket/{robot_id}/ws/subscribe/map
+    URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/map
     
     Continuously streams the robot's map data at 10Hz to connected clients.
     Returns robot status and current map when available.
@@ -57,14 +57,14 @@ async def robot_ws(
         print("WS error:", e)
 
 @router.websocket("/{robot_id}/ws/subscribe/odom")
-async def robot_ws(
+async def odom_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     ):
     """
     WebSocket endpoint to subscribe to robot odometry updates.
     
-    URL: ws://localhost:8000/socket/{robot_id}/ws/subscribe/odom
+    URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/odom
     
     Continuously streams the robot's odometry data at 10Hz to connected clients.
     Returns robot status and current odometry information.
@@ -106,14 +106,14 @@ async def robot_ws(
         print("WS error:", e)
 
 @router.websocket("/{robot_id}/ws/subscribe/tf")
-async def robot_ws(
+async def tf_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     ):
     """
     WebSocket endpoint to subscribe to robot transform (tf) updates.
     
-    URL: ws://localhost:8000/socket/{robot_id}/ws/subscribe/tf
+    URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/tf
     
     Continuously streams the robot's transformation data at 10Hz to connected clients.
     Returns robot status and current transform information.
@@ -155,14 +155,14 @@ async def robot_ws(
         print("WS error:", e)
 
 @router.websocket("/{robot_id}/ws/subscribe/diagnostics")
-async def robot_ws(
+async def diagnostics_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     ):
     """
     WebSocket endpoint to subscribe to robot diagnostics updates.
     
-    URL: ws://localhost:8000/socket/{robot_id}/ws/subscribe/diagnostics
+    URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/diagnostics
     
     Continuously streams the robot's diagnostic data at 10Hz to connected clients.
     Returns robot status and current diagnostic information.
@@ -203,36 +203,31 @@ async def robot_ws(
     except Exception as e:
         print("WS error:", e)
 
-@router.websocket("/robots/{robot_id}/ws/publish/twist")
-async def robot_publish_ws(websocket: WebSocket, robot_id: Robots):
+@router.websocket("/{robot_id}/ws/subscribe/path")
+async def path_ws(
+    websocket: WebSocket,
+    robot_id: Robots, 
+    ):
     """
-    WebSocket endpoint to publish twist commands to the robot.
+    WebSocket endpoint to subscribe to robot path updates.
     
-    URL: ws://localhost:8000/socket/robots/{robot_id}/ws/publish/twist
+    URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/path
     
-    Allows clients to send velocity commands (linear and angular) to control
-    robot movement. Expects JSON messages with type and data fields.
+    Continuously streams the robot's path data at 10Hz to connected clients.
+    Returns robot status and current path information.
     
     Args:
         websocket: WebSocket connection object
-        robot_id: The robot identifier to control
-    
-    Expected message format:
-        {
-            "type": "twist",
-            "data": {
-                "linear": <linear_velocity>,
-                "angular": <angular_velocity>
-            }
-        }
+        robot_id: The robot identifier to subscribe to
     
     Returns:
-        JSON confirmation with status and command type
+        JSON stream with robot_id, status, and path data
     
     Raises:
         HTTPException: If robot is not connected
     """
     await websocket.accept()
+
     robot = get_robot(robot_id)
 
     if not robot.is_connected():
@@ -242,28 +237,17 @@ async def robot_publish_ws(websocket: WebSocket, robot_id: Robots):
 
     try:
         while True:
-            msg = await websocket.receive_json()
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "path": robot.subscribe_path()
+            }
 
-            cmd_type = msg.get("type")
-            data = msg.get("data")
-
-            if cmd_type == "twist":
-                robot.publish_twist(data["linear"], data["angular"])
-
-            else:
-                await websocket.send_json({"error": f"Unknown command type {cmd_type}"})
-                continue
-
-            await websocket.send_json({"status": "ok", "type": cmd_type})
+            await websocket.send_json(data)
+            await asyncio.sleep(0.5)  # 10Hz stream
 
     except WebSocketDisconnect:
-        print(f"[WS PUB] {robot_id} client disconnected")
+        print(f"{robot_id} websocket disconnected")
 
     except Exception as e:
-        print(f"[WS PUB ERROR {robot_id}]", e)
-
-    finally:
-        try:
-            await websocket.close()
-        except:
-            pass
+        print("WS error:", e)

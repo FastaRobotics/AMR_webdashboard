@@ -13,6 +13,7 @@ class SubscribableTopics(str, Enum):
     left_wheel_encoder = "left_wheel_encoder"
     right_wheel_encoder = "right_wheel_encoder"
     diagnostics = "diagnostics"
+    path = "path"
 
 
 
@@ -27,5 +28,6 @@ SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = {
     SubscribableTopics.left_wheel_encoder: "std_msgs/msg/Int32",     
     SubscribableTopics.right_wheel_encoder: "std_msgs/msg/Int32", 
     SubscribableTopics.map: "nav_msgs/msg/OccupancyGrid",
-    SubscribableTopics.diagnostics: "diagnostic_msgs/msg/DiagnosticArray"
+    SubscribableTopics.diagnostics: "diagnostic_msgs/msg/DiagnosticArray", 
+    SubscribableTopics.path: "nav_msgs/msg/Path"
 }

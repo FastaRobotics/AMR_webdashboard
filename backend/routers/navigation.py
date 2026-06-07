@@ -4,6 +4,11 @@ from routers.auth import get_current_user
 from routers.connection import *
 import sqlite3
 from pydantic import BaseModel
+from enum import Enum
+
+class State(str, Enum):
+    activate = "activate"
+    deactivate = "deactivate"
 
 router = APIRouter(prefix="/navigation", tags=["navigation"])
 
@@ -124,3 +129,27 @@ async def stop_exploring(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/{robot_id}/emergency_stop/{state}")
+async def emergency_stop(
+    # current_user=Depends(get_current_user),
+    robot_id: Robots = Path(..., description="Unique ID of the robot"),
+    state: State = Path(..., description="Emergency stop state")
+    ):
+    """
+    Activate emergency stop on the robot.
+    This will immediately stop all robot movement and save the generated map.
+    only input is robot_id which is defined in the ROBOTS dict.
+    For example, to activate emergency stop on amr_1,
+    send a POST request to /robots/amr_1/emergency_stop
+    """
+    try: 
+        robot = get_robot(robot_id)
+        if state == State.activate:
+            response = robot.publish_emergency_stop(True)
+        else:
+            response = robot.publish_emergency_stop(False)
+
+        return {"status": "emergency stop activated", "robot_id": robot_id, "response": response }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
