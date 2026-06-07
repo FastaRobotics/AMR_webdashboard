@@ -223,6 +223,7 @@ class Robot:
     def recording_status(self):
         service = self.AVAILABLE_SERVICES.recording_status
         response = self.call(service, {})
+        response["message"] = response["message"].split(" ")[0]
         return response
 
     def delete_recording(self, rosbag_name: str):

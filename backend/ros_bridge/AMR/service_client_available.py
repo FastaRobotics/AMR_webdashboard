@@ -37,7 +37,7 @@ SERVICE_MESSAGE_TYPES = {
 
     AvailableServices.start_recording: "robot_msgs/srv/RosBagByName",
     AvailableServices.stop_recording: "std_srvs/srv/Trigger",
-    AvailableServices.recording_status: "robot_msgs/srv/RecordingStatus",
-    AvailableServices.delete_recording: "robot_msgs/srv/DeleteRecording",
+    AvailableServices.recording_status: "std_srvs/srv/Trigger",
+    AvailableServices.delete_recording: "robot_msgs/srv/RosBagByName",
 }
 
