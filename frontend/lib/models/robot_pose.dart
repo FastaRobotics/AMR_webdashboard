@@ -60,29 +60,35 @@ class RobotPose {
     );
   }
 
+  static const _robotFrames = ['base_link', 'base_footprint'];
+
   static RobotPose? fromTf(
     Map<String, dynamic> tf, {
     String parentFrame = 'map',
-    String childFrame = 'base_link',
   }) {
     final transforms = tf['transforms'] as List<dynamic>? ?? [];
     if (transforms.isEmpty) return null;
 
     final parent = _normalizeFrame(parentFrame);
-    final child = _normalizeFrame(childFrame);
 
-    final direct = _findTransform(transforms, parent: parent, child: child);
-    if (direct != null) {
-      return _fromTransform(direct, frameId: parent);
+    for (final child in _robotFrames) {
+      final direct = _findTransform(transforms, parent: parent, child: child);
+      if (direct != null) {
+        return _fromTransform(direct, frameId: parent);
+      }
     }
 
     final mapOdom = _findTransform(transforms, parent: parent, child: 'odom');
-    final odomBase = _findTransform(transforms, parent: 'odom', child: child);
-    if (mapOdom != null && odomBase != null) {
-      return _compose(
-        _fromTransform(mapOdom, frameId: parent),
-        _fromTransform(odomBase, frameId: 'odom'),
-      );
+    if (mapOdom != null) {
+      for (final child in _robotFrames) {
+        final odomBase = _findTransform(transforms, parent: 'odom', child: child);
+        if (odomBase != null) {
+          return _compose(
+            _fromTransform(mapOdom, frameId: parent),
+            _fromTransform(odomBase, frameId: 'odom'),
+          );
+        }
+      }
     }
 
     return null;

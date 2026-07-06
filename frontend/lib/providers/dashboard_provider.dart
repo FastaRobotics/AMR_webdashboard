@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 
 import '../core/config.dart';
@@ -34,6 +36,9 @@ class DashboardState extends ChangeNotifier {
 
   double linearVelocity = 0;
   double angularVelocity = 0;
+
+  double? goalX;
+  double? goalY;
 
   ApiClient get api => _api;
 
@@ -157,6 +162,21 @@ class DashboardState extends ChangeNotifier {
 
   Future<void> stopNavigation() async {
     await _api.post('/navigation/$robotId/stop');
+  }
+
+  Future<void> sendGoalPose({
+    required double x,
+    required double y,
+    double theta = 0,
+  }) async {
+    await _api.post('/navigation/$robotId/goal_pose', body: {
+      'position_xyz': [x, y, 0.0],
+      'orientation_xyzw': [0.0, 0.0, math.sin(theta / 2), math.cos(theta / 2)],
+      'frame_id': 'map',
+    });
+    goalX = x;
+    goalY = y;
+    notifyListeners();
   }
 
   void sendVelocity({required double linear, required double angular}) {

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
+import '../core/config.dart';
 import 'robot_pose.dart';
 
 class OccupancyGrid {
@@ -41,7 +42,7 @@ class OccupancyGrid {
       height: (info['height'] as num?)?.toInt() ?? 0,
       resolution: (info['resolution'] as num?)?.toDouble() ?? 0.05,
       originX: (position['x'] as num?)?.toDouble() ?? 0,
-      originY: (position['y'] as num?)?.toDouble() ?? 0,
+      originY: ((position['y'] as num?)?.toDouble() ?? 0) + AppConfig.mapOriginYOffset,
       originTheta: RobotPose.yawFromQuaternion(orientation),
       data: rawData.map((e) => (e as num).toInt()).toList(),
       frameId: header['frame_id'] as String? ?? 'map',
@@ -74,6 +75,18 @@ class OccupancyGrid {
     return Offset(
       local.dx * pixelsPerMeter,
       (mapHeightMeters - local.dy) * pixelsPerMeter,
+    );
+  }
+
+  /// Canvas pixels back to world (map frame) coords. Inverse of [worldToCanvas].
+  Offset canvasToWorld(Offset canvas, double pixelsPerMeter) {
+    final lx = canvas.dx / pixelsPerMeter;
+    final ly = mapHeightMeters - canvas.dy / pixelsPerMeter;
+    final cosO = math.cos(originTheta);
+    final sinO = math.sin(originTheta);
+    return Offset(
+      originX + lx * cosO - ly * sinO,
+      originY + lx * sinO + ly * cosO,
     );
   }
 

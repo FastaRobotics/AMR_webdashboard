@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../models/occupancy_grid.dart';
 import '../../models/path_message.dart';
@@ -15,12 +16,20 @@ class OccupancyMapView extends StatefulWidget {
     required this.grid,
     this.pose,
     this.path,
-    this.pixelsPerMeter = 60,
+    this.goal,
+    this.onGoalSelected,
+    this.pixelsPerMeter = AppConfig.mapPixelsPerMeter,
   });
 
   final OccupancyGrid? grid;
   final RobotPose? pose;
   final PathMessage? path;
+
+  /// Last goal sent, in map-frame world coordinates.
+  final Offset? goal;
+
+  /// Called with map-frame world coordinates when the user long-presses the map.
+  final void Function(Offset world)? onGoalSelected;
   final double pixelsPerMeter;
 
   @override
@@ -97,25 +106,52 @@ class _OccupancyMapViewState extends State<OccupancyMapView> {
           borderRadius: BorderRadius.circular(16),
           child: ColoredBox(
             color: AppTheme.mapCanvas,
-            child: InteractiveViewer(
-              transformationController: _transform,
-              minScale: 0.2,
-              maxScale: 12,
-              boundaryMargin: const EdgeInsets.all(120),
-              child: SizedBox(
-                width: mapWidthPx,
-                height: mapHeightPx,
-                child: CustomPaint(
-                  painter: _MapScenePainter(
-                    grid: grid,
-                    mapImage: _mapImage,
-                    pose: widget.pose,
-                    path: widget.path,
-                    pixelsPerMeter: widget.pixelsPerMeter,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return InteractiveViewer(
+                  transformationController: _transform,
+                  constrained: false,
+                  minScale: 0.2,
+                  maxScale: 12,
+                  boundaryMargin: const EdgeInsets.all(120),
+                  // Fill the available area by fitting the fixed-scale canvas
+                  // into the viewport. This does NOT change pixelsPerMeter, so
+                  // grid spacing and robot pose stay correct.
+                  child: SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: FittedBox(
+                      fit: BoxFit.contain,
+                      child: SizedBox(
+                        width: mapWidthPx,
+                        height: mapHeightPx,
+                        child: GestureDetector(
+                          onLongPressStart: widget.onGoalSelected == null
+                              ? null
+                              : (details) {
+                                  final world = grid!.canvasToWorld(
+                                    details.localPosition,
+                                    widget.pixelsPerMeter,
+                                  );
+                                  widget.onGoalSelected!(world);
+                                },
+                          child: CustomPaint(
+                            painter: _MapScenePainter(
+                              grid: grid,
+                              mapImage: _mapImage,
+                              pose: widget.pose,
+                              path: widget.path,
+                              goal: widget.goal,
+                              pixelsPerMeter: widget.pixelsPerMeter,
+                            ),
+                            size: Size(mapWidthPx, mapHeightPx),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  size: Size(mapWidthPx, mapHeightPx),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -171,6 +207,7 @@ class _MapScenePainter extends CustomPainter {
     required this.mapImage,
     required this.pose,
     required this.path,
+    required this.goal,
     required this.pixelsPerMeter,
   });
 
@@ -178,6 +215,7 @@ class _MapScenePainter extends CustomPainter {
   final ui.Image? mapImage;
   final RobotPose? pose;
   final PathMessage? path;
+  final Offset? goal;
   final double pixelsPerMeter;
 
   Offset _worldToCanvas(double wx, double wy) {
@@ -197,7 +235,21 @@ class _MapScenePainter extends CustomPainter {
 
     _paintGrid(canvas, size);
     _paintPath(canvas);
+    if (goal != null) _paintGoal(canvas, goal!);
     if (pose != null) _paintRobot(canvas, pose!);
+  }
+
+  void _paintGoal(Canvas canvas, Offset goalWorld) {
+    final center = _worldToCanvas(goalWorld.dx, goalWorld.dy);
+    final fill = Paint()..color = AppTheme.accent.withValues(alpha: 0.25);
+    final stroke = Paint()
+      ..color = AppTheme.accent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    canvas.drawCircle(center, 10, fill);
+    canvas.drawCircle(center, 10, stroke);
+    canvas.drawCircle(center, 2.5, Paint()..color = AppTheme.accent);
   }
 
   void _paintGrid(Canvas canvas, Size size) {
@@ -205,14 +257,48 @@ class _MapScenePainter extends CustomPainter {
       ..color = AppTheme.border.withValues(alpha: 0.25)
       ..strokeWidth = 0.5;
 
-    const stepMeters = 1.0;
-    final stepPx = stepMeters * pixelsPerMeter;
-    for (var x = 0.0; x <= size.width; x += stepPx) {
+    // Anchor gridlines to whole meters in the map frame (like RViz),
+    // not to the image corner.
+    final minWx = grid.originX;
+    final maxWx = grid.originX + grid.mapWidthMeters;
+    for (var wx = minWx.ceilToDouble(); wx <= maxWx; wx += 1.0) {
+      final x = (wx - grid.originX) * pixelsPerMeter;
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
     }
-    for (var y = 0.0; y <= size.height; y += stepPx) {
+
+    final minWy = grid.originY;
+    final maxWy = grid.originY + grid.mapHeightMeters;
+    for (var wy = minWy.ceilToDouble(); wy <= maxWy; wy += 1.0) {
+      final y = (grid.mapHeightMeters - (wy - grid.originY)) * pixelsPerMeter;
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
+
+    _paintOriginAxes(canvas);
+  }
+
+  /// RViz-style axes at the map frame origin: red +X, green +Y.
+  void _paintOriginAxes(Canvas canvas) {
+    final origin = _worldToCanvas(0, 0);
+    final xEnd = _worldToCanvas(0.5, 0);
+    final yEnd = _worldToCanvas(0, 0.5);
+
+    canvas.drawLine(
+      origin,
+      xEnd,
+      Paint()
+        ..color = const Color(0xFFE53935)
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(
+      origin,
+      yEnd,
+      Paint()
+        ..color = const Color(0xFF43A047)
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(origin, 3, Paint()..color = AppTheme.textPrimary);
   }
 
   void _paintPath(Canvas canvas) {
@@ -283,6 +369,7 @@ class _MapScenePainter extends CustomPainter {
     return oldDelegate.mapImage != mapImage ||
         oldDelegate.pose != pose ||
         oldDelegate.path != path ||
+        oldDelegate.goal != goal ||
         oldDelegate.grid != grid;
   }
 }

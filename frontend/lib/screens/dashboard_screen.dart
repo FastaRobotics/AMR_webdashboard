@@ -27,6 +27,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  Future<void> _sendGoal(
+    BuildContext context,
+    DashboardState state,
+    Offset world,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await state.sendGoalPose(x: world.dx, y: world.dy);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'Goal sent: (${world.dx.toStringAsFixed(2)}, ${world.dy.toStringAsFixed(2)})',
+          ),
+        ),
+      );
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Failed to send goal: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,6 +90,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               grid: grid,
                               pose: pose,
                               path: path,
+                              goal: state.goalX != null && state.goalY != null
+                                  ? Offset(state.goalX!, state.goalY!)
+                                  : null,
+                              onGoalSelected: state.isConnected
+                                  ? (world) => _sendGoal(context, state, world)
+                                  : null,
                             ),
                             const ControlPanel(),
                           ],
