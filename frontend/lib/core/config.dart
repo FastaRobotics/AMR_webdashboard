@@ -6,9 +6,12 @@ class AppConfig {
 
   static const double mapOriginYOffset = 0;
 
-  /// Map display scale (1.0 = 60 px/m). 2.5 → 150 px/m.
   static const double mapScale = 0.4;
   static const double mapPixelsPerMeter = 60 * mapScale;
+
+  /// Goal pose (map frame) sent by "Start Navigation".
+  static const double startNavGoalX = -0.5;
+  static const double startNavGoalY = -4.0;
 
   static String wsBaseUrl(String httpBaseUrl) {
     final uri = Uri.parse(httpBaseUrl);

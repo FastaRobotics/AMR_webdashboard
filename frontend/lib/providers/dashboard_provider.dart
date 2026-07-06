@@ -155,9 +155,16 @@ class DashboardState extends ChangeNotifier {
       'map_name': mapName,
       'localize_after_load': true,
       'localize_failure_is_fatal': false,
-      'pose_hint_position_xyz': [0.0, 0.0, 0.0],
+      'pose_hint_position_xyz': [
+        AppConfig.startNavGoalX,
+        AppConfig.startNavGoalY,
+        0.0,
+      ],
       'pose_hint_orientation_xyzw': [0.0, 0.0, 0.0, 1.0],
     });
+    goalX = AppConfig.startNavGoalX;
+    goalY = AppConfig.startNavGoalY;
+    notifyListeners();
   }
 
   Future<void> stopNavigation() async {
