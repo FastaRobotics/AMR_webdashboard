@@ -13,22 +13,12 @@ async def map_ws(
     robot_id: Robots, 
     ):
     """
-    WebSocket endpoint to subscribe to robot map updates.
-    
+    WebSocket endpoint to fetch the robot map once.
+
     URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/map
-    
-    Continuously streams the robot's map data at 10Hz to connected clients.
-    Returns robot status and current map when available.
-    
-    Args:
-        websocket: WebSocket connection object
-        robot_id: The robot identifier to subscribe to
-    
-    Returns:
-        JSON stream with robot_id, status, and map data
-    
-    Raises:
-        HTTPException: If robot is not connected
+
+    Subscribes to the ROS map topic, sends the first available map payload,
+    then closes the connection. Clients should cache the map until reconnect.
     """
     await websocket.accept()
 
@@ -40,18 +30,25 @@ async def map_ws(
         return
 
     try:
-        while True:
-            data = {
-                "robot_id": robot_id,
-                "status": robot.status.value,
-                "map": robot.subscribe_map()
-            }
+        robot.subscribe_map()
+        map_data = robot.get_cached_map()
 
-            await websocket.send_json(data)
-            await asyncio.sleep(0.1)  # 10Hz stream
+        if map_data is None:
+            for _ in range(100):
+                map_data = robot.get_cached_map()
+                if map_data is not None:
+                    break
+                await asyncio.sleep(0.1)
+
+        await websocket.send_json({
+            "robot_id": robot_id,
+            "status": robot.status.value,
+            "map": map_data,
+        })
+        await websocket.close()
 
     except WebSocketDisconnect:
-        print(f"{robot_id} websocket disconnected")
+        print(f"{robot_id} map websocket disconnected")
 
     except Exception as e:
         print("WS error:", e)
@@ -154,29 +151,11 @@ async def tf_ws(
     except Exception as e:
         print("WS error:", e)
 
-@router.websocket("/{robot_id}/ws/subscribe/diagnostics")
-async def diagnostics_ws(
+@router.websocket("/{robot_id}/ws/subscribe/scan")
+async def scan_ws(
     websocket: WebSocket,
     robot_id: Robots, 
     ):
-    """
-    WebSocket endpoint to subscribe to robot diagnostics updates.
-    
-    URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/diagnostics
-    
-    Continuously streams the robot's diagnostic data at 10Hz to connected clients.
-    Returns robot status and current diagnostic information.
-    
-    Args:
-        websocket: WebSocket connection object
-        robot_id: The robot identifier to subscribe to
-    
-    Returns:
-        JSON stream with robot_id, status, and diagnostics data
-    
-    Raises:
-        HTTPException: If robot is not connected
-    """
     await websocket.accept()
 
     robot = get_robot(robot_id)
@@ -191,11 +170,105 @@ async def diagnostics_ws(
             data = {
                 "robot_id": robot_id,
                 "status": robot.status.value,
-                "diagnostics": robot.subscribe_diagnostics()
+                "scan": robot.subscribe_scan()
             }
 
             await websocket.send_json(data)
-            await asyncio.sleep(0.5)  # 10Hz stream
+            await asyncio.sleep(0.1)
+
+    except WebSocketDisconnect:
+        print(f"{robot_id} websocket disconnected")
+
+    except Exception as e:
+        print("WS error:", e)
+
+@router.websocket("/{robot_id}/ws/subscribe/amcl_pose")
+async def amcl_pose_ws(
+    websocket: WebSocket,
+    robot_id: Robots,
+    ):
+    await websocket.accept()
+
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "amcl_pose": robot.subscribe_amcl_pose(),
+            }
+
+            await websocket.send_json(data)
+            await asyncio.sleep(0.1)
+
+    except WebSocketDisconnect:
+        print(f"{robot_id} websocket disconnected")
+
+    except Exception as e:
+        print("WS error:", e)
+
+@router.websocket("/{robot_id}/ws/subscribe/local_plan")
+async def local_plan_ws(
+    websocket: WebSocket,
+    robot_id: Robots,
+    ):
+    await websocket.accept()
+
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "local_plan": robot.subscribe_local_plan(),
+            }
+
+            await websocket.send_json(data)
+            await asyncio.sleep(0.5)
+
+    except WebSocketDisconnect:
+        print(f"{robot_id} websocket disconnected")
+
+    except Exception as e:
+        print("WS error:", e)
+
+@router.websocket("/{robot_id}/ws/subscribe/diagnostics")
+async def diagnostics_ws(
+    websocket: WebSocket,
+    robot_id: Robots, 
+    ):
+    """Deprecated: use /scan instead. Kept for backward compatibility."""
+    await websocket.accept()
+
+    robot = get_robot(robot_id)
+
+    if not robot.is_connected():
+        await websocket.send_json({"error": "robot not connected"})
+        await websocket.close()
+        return
+
+    try:
+        while True:
+            data = {
+                "robot_id": robot_id,
+                "status": robot.status.value,
+                "scan": robot.subscribe_scan()
+            }
+
+            await websocket.send_json(data)
+            await asyncio.sleep(0.5)
 
     except WebSocketDisconnect:
         print(f"{robot_id} websocket disconnected")

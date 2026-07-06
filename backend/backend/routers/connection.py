@@ -8,7 +8,8 @@ import random
 from ros_bridge.connection.ConnectRequest import ConnectRequest, RequestType
 from robot import Robot  
 from amr_robot import AMR
-from go2_robot import Go2 
+from go2_robot import Go2
+from roslibpy.core import RosTimeoutError
 
 class Robots(str, Enum):
     AMR_1 = "amr_1"
@@ -19,7 +20,7 @@ class ConnectionType(str, Enum):
     DISCONNECT = "disconnect"
 
 ROBOTS: Dict[str, Robot] = {}
-ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090, host="192.168.1.219")
+ROBOTS['amr_1'] = AMR(robot_id="amr_1", port=9090, host="127.0.0.1")
 ROBOTS['go2_1'] = Go2(robot_id="go2_1", port=7070, host="192.168.1.220")
 
 # --------- Helpers ---------
@@ -39,7 +40,7 @@ async def robot_connection(
     # current_user=Depends(get_current_user),
     robot_id: Robots = Path(..., description="Unique ID of the robot. for example amr_1"),
     type: ConnectionType = Path(..., description="Connect or Disconnect"), 
-    host: Optional[str] = Body("0.0.0.0", description="ROS bridge host IP address. Required for connect, ignored for disconnect"),
+    host: Optional[str] = Body("127.0.0.1", description="ROS bridge host IP address. Required for connect, ignored for disconnect"),
     port: Optional[int] = Body(9090, description="ROS bridge port. Required for connect, ignored for disconnect")
     ):
     """
@@ -47,7 +48,7 @@ async def robot_connection(
     Robot id is defined in the ROBOTS dict. For example,
     to connect to amr_1, send a POST request to 
     /connection/connect/amr_1 with body {
-        "host": "192.168.1.219",
+        "host": "127.0.0.1",
         "port": 9090
     } 
     """
@@ -62,7 +63,7 @@ async def robot_connection(
             robot.disconnect()
             return {"message": f"Robot '{robot_id}' disconnected"}
 
-    except TimeoutError as e:
+    except (TimeoutError, RosTimeoutError) as e:
         raise HTTPException(
             status_code=504,
             detail=f"Failed to connect to ROS bridge for robot '{robot_id}': {str(e)}."

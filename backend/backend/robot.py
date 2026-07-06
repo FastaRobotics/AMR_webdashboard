@@ -1,8 +1,9 @@
 from enum import Enum
-import time 
+import time
 from roslibpy import Ros
+from roslibpy.core import RosTimeoutError
 from ros_bridge.publisher import RosPublisher
-from ros_bridge.subscriber import RosSubscriber
+from ros_bridge.subscriber import RosSubscriber, TfSubscriber
 from ros_bridge.service_client import RosServiceClient
 
 import base64
@@ -40,29 +41,52 @@ class Robot:
         self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES = SUBSCRIBABLE_TOPIC_MESSAGE_TYPES
         self.AVAILABLE_SERVICES = AVAILABLE_SERVICES
         self.SERVICE_MESSAGE_TYPES = SERVICE_MESSAGE_TYPES
+        self._cached_map = None
 
     # --------------------
     # Connection Management
     # --------------------
     def connect(self, host: str = None, port: int = None):
-        if self.ros and self.ros.is_connected:
-            self.disconnect()
+        host = host or self.host
+        port = port or self.port
 
-        self.ros = Ros(host=host or self.host, port=port or self.port)
-        self.ros.run()
+        if self.ros and self.ros.is_connected:
+            self.host = host
+            self.port = port
+            return
+
+        self.disconnect()
+
+        self.host = host
+        self.port = port
+        self.ros = Ros(host=host, port=port)
+
+        try:
+            self.ros.run(timeout=15)
+        except RosTimeoutError:
+            self.disconnect()
+            raise
 
         if not self.ros.is_connected:
-            self.ros = None
-            self.status = RobotStatus.OFFLINE
-            raise ConnectionError(f"[{self.robot_id}] Failed to connect to ROS at {self.host}:{self.port}")
-        else:
-            self.status = RobotStatus.IDLE
-            print(f"[{self.robot_id}] Connected to ROS at {self.host}:{self.port}")
+            self.disconnect()
+            raise ConnectionError(
+                f"[{self.robot_id}] Failed to connect to ROS at {host}:{port}"
+            )
+
+        self.status = RobotStatus.IDLE
+        print(f"[{self.robot_id}] Connected to ROS at {host}:{port}")
 
     def disconnect(self):
-        if self.ros and self.ros.is_connected:
-            self.ros.close()
+        if self.ros:
+            try:
+                if self.ros.is_connected:
+                    self.ros.close()
+            except Exception:
+                pass
         self.ros = None
+        self.publishers = {}
+        self.subscribers = {}
+        self._cached_map = None
         self.status = RobotStatus.OFFLINE
         print(f"[{self.robot_id}] Disconnected.")
 
@@ -71,44 +95,58 @@ class Robot:
             self.status = RobotStatus.OFFLINE
         return self.status != RobotStatus.OFFLINE
 
+    def ensure_connected(self) -> bool:
+        """Reconnect with the stored host/port if the connection was lost
+        (e.g. after a backend restart). Returns True when connected."""
+        if self.is_connected():
+            return True
+        try:
+            self.connect()
+        except Exception as e:
+            print(f"[{self.robot_id}] Auto-reconnect failed: {type(e).__name__}: {e}")
+            return False
+        return self.is_connected()
+
     # --------------------
     # Publisher Methods
     # --------------------
     def publish(self, topic: str, message: dict):
-        if not self.is_connected():
+        if not self.ensure_connected():
             self.status = RobotStatus.OFFLINE
             raise RuntimeError(f"[{self.robot_id}] Cannot publish: Not connected.")
         
         msg_type = self.PUBLISHABLE_TOPIC_MESSAGE_TYPES[topic]
+        topic_name = topic.value if isinstance(topic, Enum) else str(topic)
 
         if topic not in self.publishers:
-            self.publishers[topic] = RosPublisher(ros=self.ros, topic_name=topic, message_type=msg_type)
+            self.publishers[topic] = RosPublisher(
+                ros=self.ros, topic_name=topic_name, message_type=msg_type
+            )
 
         self.publishers[topic].publish_once(message)
         self.publishers[topic].close()
         print(f"[{self.robot_id}] Published to {topic}: {message}")
-        return {"status": "published", "topic": topic, "message": message}
+        return {"status": "published", "topic": str(topic), "message": message}
     
-    def publish_string(self, data: str):
-        topic = self.PublishableTopics.chatter
-        self.publish(topic, {"data": data})
-
     def publish_twist(self, linear: dict, angular: dict):
         topic = self.PublishableTopics.cmd_vel
         self.publish(topic , {"linear": linear, "angular": angular})
 
-    def publish_pose(self, position: dict, orientation: dict):
-        topic = self.PublishableTopics.point
-        self.publish(topic, {"position": position, "orientation": orientation})
-
     def publish_goal_pose(self, header: dict, pose: dict):
         topic = self.PublishableTopics.goal_pose
-        self.publish(topic, {"header": header, "pose": pose})
+        return self.publish(topic, {"header": header, "pose": pose})
 
     def publish_emergency_stop(self, emergency_stop: bool):
-        topic = self.PublishableTopics.emergency_stop
-        response = self.publish(topic, {"data": emergency_stop})
-        return response
+        if emergency_stop:
+            return self.publish_twist(
+                linear={"x": 0.0, "y": 0.0, "z": 0.0},
+                angular={"x": 0.0, "y": 0.0, "z": 0.0},
+            )
+        return {
+            "status": "released",
+            "topic": self.PublishableTopics.cmd_vel,
+            "message": "emergency stop released",
+        }
 
     # --------------------
     # Subscriber Methods
@@ -120,11 +158,14 @@ class Robot:
         msg_type = self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic)
 
         if topic not in self.subscribers:
-            subscriber = RosSubscriber(ros=self.ros, topic_name=topic, message_type=msg_type)
+            topic_name = topic.value if isinstance(topic, Enum) else str(topic)
+            subscriber_cls = TfSubscriber if topic_name == "/tf" else RosSubscriber
+            subscriber = subscriber_cls(
+                ros=self.ros, topic_name=topic_name, message_type=msg_type
+            )
             subscriber.subscribe()
             self.subscribers[topic] = subscriber
-            
-        print(f"[{self.robot_id}] Subscribed to {topic}")
+            print(f"[{self.robot_id}] Subscribed to {topic_name}")
     
     def get_last_message(self, topic: str):
         if topic not in self.subscribers:
@@ -143,11 +184,43 @@ class Robot:
     
     def subscribe_map(self):
         topic = self.SubscribableTopics.map
+        if topic not in self.subscribers:
+            topic_name = topic.value if isinstance(topic, Enum) else str(topic)
+            msg_type = self.SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic)
+            subscriber = RosSubscriber(
+                ros=self.ros, topic_name=topic_name, message_type=msg_type
+            )
+            subscriber.subscribe()
+            self.subscribers[topic] = subscriber
+            print(f"[{self.robot_id}] Subscribed to {topic_name}")
+
+        latest = self.get_last_message(topic)
+        if latest is not None:
+            self._cached_map = latest
+        return self._cached_map
+
+    def get_cached_map(self):
+        if self._cached_map is not None:
+            return self._cached_map
+        topic = self.SubscribableTopics.map
+        if topic in self.subscribers:
+            latest = self.get_last_message(topic)
+            if latest is not None:
+                self._cached_map = latest
+        return self._cached_map
+    
+    def subscribe_scan(self):
+        topic = self.SubscribableTopics.scan
         self.subscribe(topic)
         return self.get_last_message(topic)
-    
-    def subscribe_diagnostics(self):
-        topic = self.SubscribableTopics.diagnostics
+
+    def subscribe_amcl_pose(self):
+        topic = self.SubscribableTopics.amcl_pose
+        self.subscribe(topic)
+        return self.get_last_message(topic)
+
+    def subscribe_local_plan(self):
+        topic = self.SubscribableTopics.local_plan
         self.subscribe(topic)
         return self.get_last_message(topic)
     
@@ -160,7 +233,7 @@ class Robot:
     # Task Control
     # --------------------
     def call(self, service: str, request: dict):
-        if not self.is_connected():
+        if not self.ensure_connected():
             raise RuntimeError(f"[{self.robot_id}] Cannot call service: Not connected.")
 
         if service not in self.services:
