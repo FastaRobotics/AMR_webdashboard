@@ -16,6 +16,7 @@ class OccupancyMapView extends StatefulWidget {
     required this.grid,
     this.pose,
     this.path,
+    this.tfFrames,
     this.goal,
     this.onGoalSelected,
     this.pixelsPerMeter = AppConfig.mapPixelsPerMeter,
@@ -24,6 +25,9 @@ class OccupancyMapView extends StatefulWidget {
   final OccupancyGrid? grid;
   final RobotPose? pose;
   final PathMessage? path;
+
+  /// TF frames resolved in the map frame (name → pose). Null hides them.
+  final Map<String, RobotPose>? tfFrames;
 
   /// Last goal sent, in map-frame world coordinates.
   final Offset? goal;
@@ -141,6 +145,7 @@ class _OccupancyMapViewState extends State<OccupancyMapView> {
                               mapImage: _mapImage,
                               pose: widget.pose,
                               path: widget.path,
+                              tfFrames: widget.tfFrames,
                               goal: widget.goal,
                               pixelsPerMeter: widget.pixelsPerMeter,
                             ),
@@ -207,6 +212,7 @@ class _MapScenePainter extends CustomPainter {
     required this.mapImage,
     required this.pose,
     required this.path,
+    required this.tfFrames,
     required this.goal,
     required this.pixelsPerMeter,
   });
@@ -215,6 +221,7 @@ class _MapScenePainter extends CustomPainter {
   final ui.Image? mapImage;
   final RobotPose? pose;
   final PathMessage? path;
+  final Map<String, RobotPose>? tfFrames;
   final Offset? goal;
   final double pixelsPerMeter;
 
@@ -236,19 +243,58 @@ class _MapScenePainter extends CustomPainter {
     _paintGrid(canvas, size);
     _paintPath(canvas);
     if (goal != null) _paintGoal(canvas, goal!);
+    if (tfFrames != null) _paintTfFrames(canvas, tfFrames!);
     if (pose != null) _paintRobot(canvas, pose!);
+  }
+
+  void _paintTfFrames(Canvas canvas, Map<String, RobotPose> frames) {
+    const axisLen = 0.4;
+    frames.forEach((name, pose) {
+      final origin = _worldToCanvas(pose.x, pose.y);
+      final xEnd = _worldToCanvas(
+        pose.x + axisLen * math.cos(pose.theta),
+        pose.y + axisLen * math.sin(pose.theta),
+      );
+      final yEnd = _worldToCanvas(
+        pose.x + axisLen * math.cos(pose.theta + math.pi / 2),
+        pose.y + axisLen * math.sin(pose.theta + math.pi / 2),
+      );
+
+      canvas.drawLine(
+        origin,
+        xEnd,
+        Paint()
+          ..color = const Color(0xFFE53935)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawLine(
+        origin,
+        yEnd,
+        Paint()
+          ..color = const Color(0xFF43A047)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawCircle(origin, 2, Paint()..color = AppTheme.textPrimary);
+
+      final tp = TextPainter(
+        text: TextSpan(
+          text: name,
+          style: const TextStyle(
+            color: AppTheme.textPrimary,
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, origin + const Offset(4, -12));
+    });
   }
 
   void _paintGoal(Canvas canvas, Offset goalWorld) {
     final center = _worldToCanvas(goalWorld.dx, goalWorld.dy);
-    final fill = Paint()..color = AppTheme.accent.withValues(alpha: 0.25);
-    final stroke = Paint()
-      ..color = AppTheme.accent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-
-    canvas.drawCircle(center, 10, fill);
-    canvas.drawCircle(center, 10, stroke);
     canvas.drawCircle(center, 2.5, Paint()..color = AppTheme.accent);
   }
 
@@ -369,6 +415,7 @@ class _MapScenePainter extends CustomPainter {
     return oldDelegate.mapImage != mapImage ||
         oldDelegate.pose != pose ||
         oldDelegate.path != path ||
+        oldDelegate.tfFrames != tfFrames ||
         oldDelegate.goal != goal ||
         oldDelegate.grid != grid;
   }

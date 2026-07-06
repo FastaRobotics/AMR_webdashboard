@@ -195,7 +195,7 @@ class _DirectionPad extends StatelessWidget {
   }
 }
 
-class _HoldButton extends StatelessWidget {
+class _HoldButton extends StatefulWidget {
   const _HoldButton({
     required this.icon,
     required this.onPressed,
@@ -209,18 +209,46 @@ class _HoldButton extends StatelessWidget {
   final bool isStop;
 
   @override
+  State<_HoldButton> createState() => _HoldButtonState();
+}
+
+class _HoldButtonState extends State<_HoldButton> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed != value) setState(() => _pressed = value);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final baseColor = widget.isStop ? AppTheme.surfaceElevated : AppTheme.surface;
+    final color = _pressed ? Color.alphaBlend(Colors.black.withValues(alpha: 0.18), baseColor) : baseColor;
+
     return Listener(
-      onPointerDown: (_) => onPressed(),
-      onPointerUp: (_) => onReleased(),
-      onPointerCancel: (_) => onReleased(),
-      child: Material(
-        color: isStop ? AppTheme.surfaceElevated : AppTheme.surface,
-        borderRadius: BorderRadius.circular(8),
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(icon, size: 20, color: isStop ? AppTheme.textPrimary : AppTheme.accent),
+      onPointerDown: (_) {
+        _setPressed(true);
+        widget.onPressed();
+      },
+      onPointerUp: (_) {
+        _setPressed(false);
+        widget.onReleased();
+      },
+      onPointerCancel: (_) {
+        _setPressed(false);
+        widget.onReleased();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 80),
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          widget.icon,
+          size: 20,
+          color: widget.isStop ? AppTheme.textPrimary : AppTheme.accent,
         ),
       ),
     );

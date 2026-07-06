@@ -5,13 +5,12 @@ class AppConfig {
   static const int defaultRosPort = 9090;
 
   static const double mapOriginYOffset = 0;
-
   static const double mapScale = 0.4;
   static const double mapPixelsPerMeter = 60 * mapScale;
 
-  /// Goal pose (map frame) sent by "Start Navigation".
   static const double startNavGoalX = -0.5;
   static const double startNavGoalY = -4.0;
+  static const bool showTfFrames = false;
 
   static String wsBaseUrl(String httpBaseUrl) {
     final uri = Uri.parse(httpBaseUrl);

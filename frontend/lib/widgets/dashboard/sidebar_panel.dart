@@ -30,11 +30,7 @@ class SidebarPanel extends StatelessWidget {
                       isConnecting: state.isConnecting,
                       errorMessage: state.errorMessage,
                       status: state.robotStatus,
-                      linearVel: state.linearVelocity,
-                      angularVel: state.angularVelocity,
                     ),
-                    const SizedBox(height: 16),
-                    _ConnectionCard(state: state),
                     const SizedBox(height: 16),
                     _NavigationCard(state: state),
                   ],
@@ -104,16 +100,12 @@ class _StatusCard extends StatelessWidget {
     required this.isConnecting,
     required this.errorMessage,
     required this.status,
-    required this.linearVel,
-    required this.angularVel,
   });
 
   final bool isConnected;
   final bool isConnecting;
   final String? errorMessage;
   final String status;
-  final double linearVel;
-  final double angularVel;
 
   @override
   Widget build(BuildContext context) {
@@ -178,72 +170,6 @@ class _StatusCard extends StatelessWidget {
                 style: const TextStyle(color: AppTheme.danger, fontSize: 12),
               ),
             ],
-            if (isConnected) ...[
-              const SizedBox(height: 12),
-              _MetricRow(label: 'Linear', value: '${linearVel.toStringAsFixed(2)} m/s'),
-              const SizedBox(height: 4),
-              _MetricRow(label: 'Angular', value: '${angularVel.toStringAsFixed(2)} rad/s'),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetricRow extends StatelessWidget {
-  const _MetricRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-        Text(value, style: const TextStyle(fontSize: 12, fontFeatures: [])),
-      ],
-    );
-  }
-}
-
-class _ConnectionCard extends StatelessWidget {
-  const _ConnectionCard({required this.state});
-
-  final DashboardState state;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Connection',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: AppTheme.textSecondary,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            _LabeledField(
-              label: 'ROS Host',
-              child: Text(
-                state.rosHost,
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
-            const SizedBox(height: 10),
-            _LabeledField(
-              label: 'ROS Port',
-              child: Text(
-                state.rosPort.toString(),
-                style: const TextStyle(fontSize: 13),
-              ),
-            ),
           ],
         ),
       ),
@@ -300,25 +226,6 @@ class _NavigationCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child});
-
-  final String label;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-        const SizedBox(height: 6),
-        child,
-      ],
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/config.dart';
 import '../core/theme.dart';
 import '../models/occupancy_grid.dart';
 import '../models/path_message.dart';
@@ -72,6 +73,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             path = PathMessage.fromJson(state.pathData as Map<String, dynamic>);
           }
 
+          Map<String, RobotPose>? tfFrames;
+          if (AppConfig.showTfFrames && state.tfData is Map<String, dynamic>) {
+            tfFrames = RobotPose.framesInFrame(state.tfData as Map<String, dynamic>);
+          }
+
           return Row(
             children: [
               const SidebarPanel(),
@@ -90,6 +96,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               grid: grid,
                               pose: pose,
                               path: path,
+                              tfFrames: tfFrames,
                               goal: state.goalX != null && state.goalY != null
                                   ? Offset(state.goalX!, state.goalY!)
                                   : null,

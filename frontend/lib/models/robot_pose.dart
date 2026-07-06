@@ -94,6 +94,42 @@ class RobotPose {
     return null;
   }
 
+  /// Resolve every TF frame reachable from [rootFrame] into that root frame,
+  /// returning each frame's pose expressed in the root frame.
+  static Map<String, RobotPose> framesInFrame(
+    Map<String, dynamic> tf, {
+    String rootFrame = 'map',
+  }) {
+    final transforms = tf['transforms'] as List<dynamic>? ?? [];
+    final edges = <String, List<MapEntry<String, RobotPose>>>{};
+    for (final item in transforms) {
+      final t = item as Map<String, dynamic>;
+      final header = t['header'] as Map<String, dynamic>? ?? {};
+      final parent = _normalizeFrame(header['frame_id'] as String?);
+      final child = _normalizeFrame(t['child_frame_id'] as String?);
+      if (parent.isEmpty || child.isEmpty) continue;
+      edges
+          .putIfAbsent(parent, () => [])
+          .add(MapEntry(child, _fromTransform(t, frameId: parent)));
+    }
+
+    final root = _normalizeFrame(rootFrame);
+    final result = <String, RobotPose>{
+      root: RobotPose(x: 0, y: 0, theta: 0, frameId: root),
+    };
+    final queue = <String>[root];
+    while (queue.isNotEmpty) {
+      final current = queue.removeAt(0);
+      final currentPose = result[current]!;
+      for (final edge in edges[current] ?? const <MapEntry<String, RobotPose>>[]) {
+        if (result.containsKey(edge.key)) continue;
+        result[edge.key] = _compose(currentPose, edge.value);
+        queue.add(edge.key);
+      }
+    }
+    return result;
+  }
+
   static Map<String, dynamic>? _findTransform(
     List<dynamic> transforms, {
     required String parent,

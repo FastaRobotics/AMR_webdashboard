@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ class DashboardState extends ChangeNotifier {
   final ApiClient _api;
   RobotStreamService? _streams;
   TwistControlService? _twist;
+  Timer? _estopTimer;
 
   String baseUrl = AppConfig.defaultBaseUrl;
   String robotId = AppConfig.defaultRobotId;
@@ -123,6 +125,8 @@ class DashboardState extends ChangeNotifier {
   }
 
   Future<void> disconnect() async {
+    _estopTimer?.cancel();
+    _estopTimer = null;
     _streams?.dispose();
     _streams = null;
     _twist?.disconnect();
@@ -146,6 +150,19 @@ class DashboardState extends ChangeNotifier {
   }
 
   Future<void> emergencyStop({required bool activate}) async {
+    if (activate) {
+      // Continuously publish cmd_vel = 0 so it overrides any Nav2 commands.
+      _twist?.publishTwist(linearX: 0, angularZ: 0);
+      _estopTimer?.cancel();
+      _estopTimer = Timer.periodic(
+        const Duration(milliseconds: 100),
+        (_) => _twist?.publishTwist(linearX: 0, angularZ: 0),
+      );
+    } else {
+      _estopTimer?.cancel();
+      _estopTimer = null;
+    }
+
     final state = activate ? 'activate' : 'deactivate';
     await _api.post('/navigation/$robotId/emergency_stop/$state');
   }
@@ -235,6 +252,7 @@ class DashboardState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _estopTimer?.cancel();
     _streams?.dispose();
     _twist?.disconnect();
     super.dispose();
