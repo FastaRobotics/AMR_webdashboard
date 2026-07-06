@@ -18,6 +18,58 @@ The frontend talks to the backend over HTTP/WebSocket, and the backend talks to 
 - Python 3.10+
 - ROS 2 with `rosbridge_server` installed
 
+## Installation
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/FastaRobotics/AMR_webdashboard.git
+cd AMR_webdashboard
+```
+
+### 2. ROS 2 bridge
+
+Install `rosbridge_server` for your ROS 2 distro if it is not already available:
+
+```bash
+sudo apt install ros-${ROS_DISTRO}-rosbridge-server
+```
+
+Source your ROS workspace before launching the bridge:
+
+```bash
+source /opt/ros/${ROS_DISTRO}/setup.bash
+# source your robot workspace if needed
+```
+
+### 3. Backend
+
+Create a virtual environment and install Python dependencies:
+
+```bash
+cd backend
+python3 -m venv bk_venv
+source bk_venv/bin/activate
+pip install -r requirements.txt
+```
+
+The API entry point is `backend/backend/api.py`. Run it from the inner `backend` directory (see [Running](#running)).
+
+### 4. Frontend
+
+Install Flutter dependencies:
+
+```bash
+cd frontend
+flutter pub get
+```
+
+Enable web support if you have not already:
+
+```bash
+flutter config --enable-web
+```
+
 ## Running
 
 Start each component in its own terminal, in this order.
