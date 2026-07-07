@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+/bk_venv/
 # C extensions
 *.so
 
