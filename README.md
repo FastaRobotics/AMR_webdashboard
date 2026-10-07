@@ -36,5 +36,25 @@ After installation, for running the UI, we use uvicorn CLI:
   uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+## Testing the dashboard without robots
+
+`fake_backend/` is a drop-in replacement for this backend: it serves the same
+REST and WebSocket API (same paths, bodies, status codes and payload shapes) with
+two simulated robots behind it — a warehouse AMR and a quadruped — including SLAM
+mapping, frontier exploration, navigation, telemetry and the rosbag endpoints. No
+ROS and no hardware required.
+
+```powershell
+pwsh -File fake_backend/run.ps1     # Windows, port 8000
+```
+
+```bash
+./fake_backend/run.sh               # Linux / macOS
+```
+
+See [fake_backend/README.md](fake_backend/README.md) for the demo credentials,
+what is simulated, the intentional fixes relative to this backend, and the
+contract test (`tools/smoke_test.py`) that replays the dashboard's own API calls.
+
 ## Authors
 - [@erfantbtb](https://github.com/erfantbtb)
