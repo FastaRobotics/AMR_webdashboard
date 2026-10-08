@@ -16,6 +16,9 @@ Fixes over the real backend:
   ``{"error": "topic 'map' is not available on robot 'go2_1'"}`` and a clean
   close, where the real backend dies with an ``AttributeError`` and the browser
   only sees an abnormal 1006 close (which makes the UI retry five times);
+* a topic whose latched message has not arrived yet (``subscribe()`` returns
+  ``None`` for a few milliseconds after the socket opens) is waited out rather
+  than sent as ``{"robot_id": ..., "status": ..., "odom": null}``;
 * an unexpected internal error is reported as an error frame before closing;
 * the five endpoints share one implementation instead of five copies of it.
 """
@@ -87,13 +90,23 @@ async def _stream_topic(
 
     try:
         while True:
-            data = {
-                "robot_id": robot_id_value(robot_id),
-                "status": robot.status.value,
-                key: subscribe(),
-            }
+            payload = subscribe()
 
-            await websocket.send_json(data)
+            # A subscription has no latched message until the robot has actually
+            # published on the topic (odom/tf at 20 Hz, diagnostics/path at
+            # 2 Hz), which is a few milliseconds after `subscribe()`. Sending
+            # that first `null` would put a frame on the wire whose envelope
+            # advertises the topic but carries no message, so wait for real data
+            # instead. `path` legitimately stays silent until a plan exists.
+            if payload is not None:
+                data = {
+                    "robot_id": robot_id_value(robot_id),
+                    "status": robot.status.value,
+                    key: payload,
+                }
+
+                await websocket.send_json(data)
+
             await asyncio.sleep(interval_s)
 
     except WebSocketDisconnect:

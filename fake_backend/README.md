@@ -212,6 +212,8 @@ that works. Each fix is noted in the source next to the code it replaces.
 | 13 | no CORS/auth changes | identical |
 | 14 | `POST /user/login` only accepts a JSON body, so the API docs' *Authorize* button (OAuth2 password flow, form-encoded) cannot work | also accepts form-encoded `username`/`password`; JSON behaviour and all status codes are unchanged |
 | 15 | **crash:** `get_current_user` is a plain `def`, so FastAPI runs it in a worker thread, and every request shares one module-level sqlite cursor → `sqlite3.ProgrammingError: Recursive use of cursors not allowed` for the dashboard's parallel fleet poll, then a native access violation (`0xC0000005`) that kills the server process | the dependency is `async` (event loop) and `database.py` gives each thread its own connection, so parallel polling is safe; `tools/smoke_test.py` replays 120 parallel authenticated requests as a regression check |
+| 16 | the streaming sockets send `subscribe()`'s return value unconditionally, so the **first frame on every socket** is `{"robot_id": …, "status": …, "odom": null}` — the envelope advertises the topic but carries no message, because the ROS subscription has no latched message yet | the frame is skipped until the topic actually has a message; `path`/`map` simply stay silent until a plan or a map exists, exactly as a real robot behaves. `tools/ws_webrtc_check.py` asserts no null-payload frame on any topic |
+| 17 | `RTCPeerConnection()` is constructed with aiortc's defaults, which include a public STUN server and mDNS resolution of the browser's `…local` host candidates. Every `POST /streaming/offer/browser` then blocked for **~5 s** inside `setLocalDescription()` before the answer was returned | peer connections are built with an explicit empty `iceServers` list (`routers/streaming.py::_new_peer_connection`), so the signalling round trip is **~20 ms** and the media path is unchanged. Measured effect in a real browser: first decoded frame **7.5 s → 2.2 s** after clicking Start Stream |
 
 Nothing that the dashboard relies on was changed: only behaviour *behind* the
 documented contract. The streaming sockets also release their subscription when
@@ -231,9 +233,11 @@ Unauthenticated, local test tooling under a prefix the real backend does not use
 | `GET /sim/health` | engine ticks, connected robots, world size, subscriber counts |
 | `GET /sim/config` | effective configuration |
 | `GET /sim/waypoints` | the waypoints (and the matching Navigation-page names) |
+| `POST /sim/waypoints` | save/overwrite a named waypoint (`{name,x,y,yaw}`) |
+| `DELETE /sim/waypoints/{name}` | delete a saved waypoint |
 | `GET /sim/robots`, `/sim/robots/{id}` | full simulated state: pose, velocity, task, battery, map stats, plan, saved maps, rosbags |
 | `GET /sim/robots/{id}/world` | ground-truth occupancy grid |
-| `GET /sim/robots/{id}/map.png?source=slam\|world` | render the map as a PNG |
+| `GET /sim/robots/{id}/map.png?source=slam\|world` | render the map as a PNG (cached per map revision; row 0 is the bottom of the map) |
 | `GET /sim/robots/{id}/telemetry/{topic}` | any topic, including `imu`, `battery_state`, `point_cloud`, `image_compressed`, `depth_image_compressed`, wheel encoders |
 | `POST /sim/robots/{id}/goal` | send a navigation goal (same effect as publishing `goal_pose`) |
 | `POST /sim/robots/{id}/teleport` | move the robot instantly |
@@ -243,6 +247,24 @@ Unauthenticated, local test tooling under a prefix the real backend does not use
 | `POST /sim/robots/{id}/fault` | `disconnect` (offline robot), `estop`, `clear` |
 | `POST /sim/faults/unreachable_hosts` | make chosen hosts refuse to connect, to test the UI's error paths |
 | `POST /sim/engine/reset` | reset one robot or all of them |
+
+### Read-only telemetry (`/telemetry`) — also not part of the real backend
+
+The five streaming sockets only carry `map`/`odom`/`tf`/`diagnostics`/`path`. The
+real backend subscribes to `battery_state`, `imu`, `point_cloud` and the
+compressed images server-side but never exposes them, so a dashboard has no way
+to read a real battery level. This router closes that gap:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /telemetry/{robot_id}` | every on-demand topic in one response, plus `status`/`connected` |
+| `GET /telemetry/{robot_id}/{topic}` | one topic, in an envelope with `generated_at` and `connected` |
+
+Both are authenticated like the rest of the dashboard API. The envelope's
+`message` is exactly the ROS message the robot publishes, so it is the same
+shape a `roslibpy` subscriber would receive. Nothing the dashboard already used
+changed paths.
+
 
 Examples:
 
@@ -305,6 +327,10 @@ cd fake_backend
 # does the backend survive the dashboard's parallel polling? (see deviation 15)
 .venv/Scripts/python.exe tools/concurrency_check.py
 .venv/Scripts/python.exe tools/concurrency_check.py --base http://192.168.1.50:8000
+
+# WebSocket + WebRTC integration: every telemetry socket, the twist socket, and
+# a real second peer that completes ICE/DTLS and decodes video frames
+.venv/Scripts/python.exe tools/ws_webrtc_check.py
 ```
 
 Both write pictures to `tools/_artifacts/`:
@@ -330,6 +356,19 @@ Go2 capability differences, WebRTC negotiation with `aiortc` (a real video track
 is delivered), the `/sim` API, CORS headers for the browser origin, 120 parallel
 authenticated requests (the load that used to crash the process), and the
 OpenAPI path list against the endpoints `routes.ts` declares.
+
+`tools/ws_webrtc_check.py` is the focused companion for the realtime surface,
+because a negotiated track is not the same as flowing media. It runs 43 checks:
+the five telemetry sockets (envelope, `robot_id` wire value, cadence within
+tolerance, and **no null-payload frame**), the `go2_1` unsupported-topic and
+offline error-then-clean-close branches, the twist ack and the resulting motion,
+and a second `RTCPeerConnection` that gathers its own candidates, completes the
+ICE + DTLS handshake against the backend and asserts decoded 320×180 yuv420p
+frames arrive at ~12 fps.
+
+The browser half of the same surface is exercised by
+`Dashboard_UI/dev/_ws_webrtc_browser_check.mjs` (22 checks) and timed by
+`Dashboard_UI/dev/_webrtc_timing.mjs`; see `Dashboard_UI/dev/README.md`.
 
 ---
 

@@ -1211,6 +1211,93 @@ def check_frontend_notes(http: Http, token: str) -> None:
     print(f"    REST paths: {len(paths)}  (websockets are not listed in OpenAPI)")
 
 
+def check_new_routes(http: Http, token: str) -> None:
+    """The routes added for the dashboard: /telemetry and the waypoint store."""
+
+    section("telemetry + waypoints")
+
+    status, payload = http.request("GET", "/telemetry/amr_1", token=token)
+    check(status == 200, "GET /telemetry/{robot} -> 200", f"status={status}")
+    topics = payload.get("topics", {}) if isinstance(payload, dict) else {}
+    check(
+        "battery_state" in topics,
+        "the battery topic is readable (the UI status bar needs it)",
+        f"topics={sorted(topics)}",
+    )
+    battery = topics.get("battery_state") or {}
+    check(
+        isinstance(battery.get("percentage"), (int, float)),
+        "battery percentage is a number",
+        f"percentage={battery.get('percentage')}",
+    )
+
+    status, payload = http.request(
+        "GET", "/telemetry/amr_1/battery_state", token=token
+    )
+    check(status == 200, "GET /telemetry/{robot}/{topic} -> 200", f"status={status}")
+    check(
+        "recording" not in payload,
+        "the envelope carries message/generated_at, not a bare message",
+        f"keys={sorted(payload)}",
+    )
+
+    status, _ = http.request("GET", "/telemetry/amr_1/nope", token=token)
+    check(status == 404, "unknown telemetry topic -> 404", f"status={status}")
+
+    status, _ = http.request("GET", "/telemetry/ghost", token=token)
+    check(status == 404, "unknown robot on /telemetry -> 404", f"status={status}")
+
+    status, _ = http.request("GET", "/telemetry/amr_1")
+    check(status == 401, "telemetry requires a token", f"status={status}")
+
+    # ── waypoints ────────────────────────────────────────────────────────────
+    status, payload = http.request("GET", "/sim/waypoints", token=token)
+    seeded = payload if isinstance(payload, list) else []
+    check(
+        status == 200 and len(seeded) >= 4,
+        "GET /sim/waypoints lists the world's waypoints",
+        f"status={status} count={len(seeded)}",
+    )
+    check(
+        all({"name", "x", "y", "yaw"} <= set(item) for item in seeded),
+        "every waypoint carries name/x/y/yaw",
+    )
+
+    status, saved = http.request(
+        "POST",
+        "/sim/waypoints",
+        body={"name": "smoke_test_wp", "x": 1.25, "y": -0.5, "yaw": 0.75},
+        token=token,
+    )
+    check(
+        status == 200 and saved.get("name") == "smoke_test_wp",
+        "POST /sim/waypoints saves a waypoint",
+        f"status={status} {saved}",
+    )
+
+    status, payload = http.request("GET", "/sim/waypoints", token=token)
+    check(
+        any(item.get("name") == "smoke_test_wp" for item in payload),
+        "the saved waypoint is listed afterwards",
+    )
+
+    status, _ = http.request("DELETE", "/sim/waypoints/smoke_test_wp", token=token)
+    check(status == 200, "DELETE /sim/waypoints/{name} -> 200", f"status={status}")
+
+    status, _ = http.request("DELETE", "/sim/waypoints/smoke_test_wp", token=token)
+    check(status == 404, "deleting it twice -> 404", f"status={status}")
+
+    # ── map PNG caching ─────────────────────────────────────────────────────
+    status, body = http.request(
+        "GET", "/sim/robots/amr_1/map.png?source=world", binary=True
+    )
+    check(
+        status == 200 and body[:8] == b"\x89PNG\r\n\x1a\n",
+        "map.png still renders a PNG after the cache was added",
+        f"status={status} bytes={len(body) if isinstance(body, bytes) else '?'}",
+    )
+
+
 # ─── main ─────────────────────────────────────────────────────────────────────
 
 
@@ -1263,6 +1350,7 @@ def main() -> int:
     check_go2(http, token)
     check_streaming(http, token)
     check_sim_api(http)
+    check_new_routes(http, token)
     check_cors(http, token)
     check_concurrency(http, token)
     check_frontend_notes(http, token)

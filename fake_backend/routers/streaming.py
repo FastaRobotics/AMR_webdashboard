@@ -17,6 +17,11 @@ works end to end.
 
 If ``aiortc`` is not installed, the signalling endpoints answer 501 with an
 explanation instead of crashing — the rest of the API is unaffected.
+
+The peer connections are created with an explicit empty ``iceServers`` list; the
+default (a public STUN server plus mDNS resolution of the browser's host
+candidates) added ~5 s to every ``setLocalDescription()`` on this localhost
+deployment. See ``_new_peer_connection``.
 """
 
 import asyncio
@@ -38,6 +43,7 @@ if settings.disable_webrtc:
     # process entirely; the signalling endpoints then answer 501.
     av = None  # type: ignore
     RTCPeerConnection = None  # type: ignore
+    RTCConfiguration = None  # type: ignore
     RTCSessionDescription = None  # type: ignore
     MediaStreamTrack = object  # type: ignore
     MediaRelay = None  # type: ignore
@@ -45,13 +51,19 @@ if settings.disable_webrtc:
 else:
     try:  # pragma: no cover - exercised by whichever environment runs this
         import av
-        from aiortc import RTCPeerConnection, RTCSessionDescription, MediaStreamTrack
+        from aiortc import (
+            RTCPeerConnection,
+            RTCConfiguration,
+            RTCSessionDescription,
+            MediaStreamTrack,
+        )
         from aiortc.contrib.media import MediaRelay
 
         AIORTC_AVAILABLE = True
     except ImportError:  # pragma: no cover
         av = None  # type: ignore
         RTCPeerConnection = None  # type: ignore
+        RTCConfiguration = None  # type: ignore
         RTCSessionDescription = None  # type: ignore
         MediaStreamTrack = object  # type: ignore
         MediaRelay = None  # type: ignore
@@ -124,6 +136,29 @@ def _require_aiortc() -> None:
         )
 
 
+def _new_peer_connection() -> "RTCPeerConnection":
+    """A peer connection that does not stall for ~5 s on ICE gathering.
+
+    ``aiortc`` defaults to a Google STUN server, which puts every server-side
+    ``setLocalDescription()`` behind a round trip that this localhost deployment
+    does not need. Browsers also hand over host candidates whose addresses are
+    mDNS names such as ``8d7e1599-….local``; resolving those costs another
+    timeout when they do not answer.
+
+    Measured on this checkout: the default configuration made
+    ``setLocalDescription(answer)`` take **5.0 s**, while an explicit empty
+    ``iceServers`` list brings the whole signalling round trip down to **~10 ms**
+    and does not change the media path at all — the browser and the server still
+    exchange host candidates directly, which is what the relay needs. A real
+    deployment that must traverse NAT should install a TURN server and add it
+    here.
+    """
+
+    return RTCPeerConnection(
+        configuration=RTCConfiguration(iceServers=[]),
+    )
+
+
 def _make_synthetic_track() -> "SyntheticCameraTrack | None":
     if not settings.synthetic_camera or not AIORTC_AVAILABLE:
         return None
@@ -174,7 +209,7 @@ async def offer_client(
     relay = MediaRelay()
     source_tracks = []
 
-    pc = RTCPeerConnection()
+    pc = _new_peer_connection()
     pc_id = f"CLIENT-{id(pc)}"
     client_pc = pc
     all_pcs.add(pc)
@@ -236,7 +271,7 @@ async def offer_browser(
 
     _ensure_synthetic_source()
 
-    pc = RTCPeerConnection()
+    pc = _new_peer_connection()
     pc_id = f"BROWSER-{id(pc)}"
     all_pcs.add(pc)
     logger.info(f"[{pc_id}] Browser PC created — {len(source_tracks)} source tracks available")

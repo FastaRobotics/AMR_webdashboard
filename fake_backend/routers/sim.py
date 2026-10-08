@@ -28,6 +28,20 @@ router = APIRouter(prefix="/sim", tags=["simulation"])
 
 ALL_TOPICS = sorted(set(STREAM_TOPICS) | set(ON_DEMAND_TOPICS))
 
+#: (robot_id, source, downsample, map_revision) -> encoded PNG bytes.
+_MAP_PNG_CACHE: dict[tuple[str, str, int, int], bytes] = {}
+
+#: Named waypoints, inserted at import time from the world layout and then
+#: editable, so the dashboard's waypoint list survives a page reload.
+_WAYPOINTS: dict[str, dict] = {}
+
+
+class WaypointRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    x: float
+    y: float
+    yaw: float = 0.0
+
 
 class GoalRequest(BaseModel):
     x: float
@@ -87,10 +101,52 @@ async def sim_config():
 
 @router.get("/waypoints")
 async def sim_waypoints():
-    return {
-        name: {"x": x, "y": y, "yaw": yaw}
-        for name, (x, y, yaw) in get_engine().world.waypoints.items()
+    """The named waypoints the world was built with, plus any the UI saved.
+
+    The real backend has no waypoint store: the Navigation page's list is
+    hardcoded there. Seeding from ``world.waypoints`` keeps the names the
+    simulation was designed around (``charging_station``, ``loading_dock``, …)
+    while letting the dashboard save its own.
+    """
+
+    if not _WAYPOINTS:
+        _WAYPOINTS.update(
+            {
+                name: {"name": name, "x": x, "y": y, "yaw": yaw, "source": "world"}
+                for name, (x, y, yaw) in get_engine().world.waypoints.items()
+            }
+        )
+
+    return sorted(_WAYPOINTS.values(), key=lambda item: item["name"])
+
+
+@router.post("/waypoints")
+async def sim_save_waypoint(body: WaypointRequest):
+    """Create or overwrite a named waypoint (or save the robot's current pose)."""
+
+    if not _WAYPOINTS:
+        await sim_waypoints()
+
+    _WAYPOINTS[body.name] = {
+        "name": body.name,
+        "x": body.x,
+        "y": body.y,
+        "yaw": body.yaw,
+        "source": "dashboard",
+        "saved_at": time.time(),
     }
+    return _WAYPOINTS[body.name]
+
+
+@router.delete("/waypoints/{name}")
+async def sim_delete_waypoint(name: str):
+    if not _WAYPOINTS:
+        await sim_waypoints()
+
+    removed = _WAYPOINTS.pop(name, None)
+    if removed is None:
+        raise HTTPException(status_code=404, detail=f"waypoint '{name}' not found")
+    return {"message": f"waypoint '{name}' deleted", "waypoint": removed}
 
 
 @router.post("/engine/reset")
@@ -182,17 +238,52 @@ async def sim_map_png(
     source: str = Query(default="slam", pattern="^(slam|world)$"),
     downsample: int = Query(default=1, ge=1, le=16),
 ):
-    """Render the SLAM map (or the ground truth) as a PNG for eyeballing."""
+    """Render the SLAM map (or the ground truth) as a PNG for eyeballing.
+
+    The dashboard mounts this as a background layer, so generation is cached
+    per (robot, source, downsample, map revision) — row 0 of the grid is the
+    BOTTOM of the map, which is the orientation the canvas expects, and the
+    SLAM map changes at 5 Hz while this is polled far more slowly.
+    """
 
     state = _state(robot_id)
     world = get_engine().world
-    cells = (
-        list(state.known)
-        if source == "slam"
-        else world.to_list()
+
+    key = (robot_id, source, downsample, int(getattr(state, "map_revision", 0)))
+    cached = _MAP_PNG_CACHE.get(key)
+    if cached is None:
+        cached = _render_map_png(world, state, source, downsample)
+        _MAP_PNG_CACHE[key] = cached
+        # Keep the cache small: a long session only ever revisits recent maps.
+        while len(_MAP_PNG_CACHE) > 24:
+            _MAP_PNG_CACHE.pop(next(iter(_MAP_PNG_CACHE)))
+
+    return Response(
+        content=cached,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "no-cache",
+            "ETag": f'W/"map-{source}-{downsample}-{key[3]}"',
+        },
     )
 
-    step = downsample
+
+def _render_map_png(world, state, source: str, step: int) -> bytes:
+    """Render a grid as greyscale PNG, one output row per grid row.
+
+    Row 0 of a ``nav_msgs/OccupancyGrid`` is the BOTTOM of the map, so the raw
+    PNG has the map upside-down compared with how a canvas would draw it (and
+    with how ROS's own ``map_saver`` writes it). That is deliberate: the image is
+    a faithful dump of the grid, which is what it is useful for.
+
+    The robot is **not** drawn into it. The image is cached by map revision, and
+    the robot moves without a revision change, so a baked-in marker would go
+    stale the moment the robot drives away. Callers that want the robot draw it
+    themselves from the pose.
+    """
+
+    cells = list(state.known) if source == "slam" else world.to_list()
+
     width = world.width // step
     height = world.height // step
     rgb = bytearray(width * height * 3)
@@ -211,18 +302,7 @@ async def sim_map_png(
             rgb[index + 1] = shade
             rgb[index + 2] = shade
 
-    # Robot marker: a red block at the robot's cell.
-    i, j = world.world_to_cell(state.pose.x, state.pose.y)
-    for dj in range(2):
-        for di in range(2):
-            ci, cj = i // step + di, j // step + dj
-            if 0 <= ci < width and 0 <= cj < height:
-                index = (cj * width + ci) * 3
-                rgb[index] = 255
-                rgb[index + 1] = 40
-                rgb[index + 2] = 40
-
-    return Response(content=png_encode(width, height, bytes(rgb)), media_type="image/png")
+    return png_encode(width, height, bytes(rgb))
 
 
 @router.post("/robots/{robot_id}/goal")

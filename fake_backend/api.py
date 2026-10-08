@@ -109,6 +109,14 @@ if settings.enable_sim_api:
 
     app.include_router(sim_router)
 
+# Read-only access to the topics the five streaming sockets do not carry
+# (battery_state, imu, point_cloud, compressed images). The real backend
+# subscribes to these but never exposes them over HTTP, so the dashboard has no
+# other way to show a real battery level. Nothing already routed here changes.
+from routers.telemetry import router as telemetry_router
+
+app.include_router(telemetry_router)
+
 
 if __name__ == "__main__":
     import uvicorn
