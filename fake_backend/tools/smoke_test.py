@@ -739,16 +739,25 @@ def check_navigation_and_exploring(http: Http, token: str) -> None:
         str(state.get("status")),
     )
 
+    # A generous timeout: the plan appears in well under a second, but the socket
+    # only carries a frame once `path_started` is set, and this assertion used to
+    # flake when the machine was busy running the browser suite alongside it.
     frame = asyncio.run(
         ws_wait_for(
             f"{WS}/streaming_socket/amr_1/ws/subscribe/path",
             lambda f: isinstance(f, dict) and isinstance(f.get("path"), dict)
             and len(f["path"].get("poses") or []) > 0,
-            timeout=8.0,
+            timeout=20.0,
         )
     )
     path = frame.get("path") if isinstance(frame, dict) else None
-    ok = check(isinstance(path, dict), "path frame carries a Path message")
+    # Report the offending frame on failure: an intermittent failure here with no
+    # payload shown is undiagnosable after the fact.
+    ok = check(
+        isinstance(path, dict),
+        "path frame carries a Path message",
+        f"last frame: {json.dumps(frame)[:300]}" if not isinstance(path, dict) else "",
+    )
     if ok:
         check_shape(path, {"header": dict, "poses": list}, "Path fields")
         check_shape(path["poses"][0], {"header": dict, "pose": dict}, "PoseStamped fields")
