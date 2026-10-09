@@ -413,7 +413,7 @@ def make_battery_state(state) -> dict:
 
 
 def make_point_cloud(state, world) -> dict:
-    """A sparse ring of lidar returns plus a few rack hits (x, y, z, intensity)."""
+    """A sparse ring of lidar returns in the ``laser_link`` frame."""
 
     import math
 
@@ -427,8 +427,14 @@ def make_point_cloud(state, world) -> dict:
         if hit is None:
             continue
         hx, hy = world.cell_center(*hit)
+        dx = hx - state.pose.x
+        dy = hy - state.pose.y
+        cos_yaw = math.cos(state.pose.yaw)
+        sin_yaw = math.sin(state.pose.yaw)
+        local_x = cos_yaw * dx + sin_yaw * dy
+        local_y = -sin_yaw * dx + cos_yaw * dy
         intensity = max(0.0, 1.0 - distance / max(state.sensor_range_m, 1e-6))
-        points.append((hx, hy, 0.28, intensity))
+        points.append((local_x, local_y, 0.0, intensity))
 
     data: list[int] = []
     for x, y, z, intensity in points:

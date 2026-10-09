@@ -6,7 +6,8 @@ The envelope is unchanged:
 
     {"robot_id": "amr_1", "status": "idle", "odom": {...}}
 
-and so is the push rate (10 Hz for map/odom/tf, 2 Hz for diagnostics/path) and
+and so is the push rate (2 Hz for map, 10 Hz for odom/tf, and 2 Hz for
+diagnostics/path) and
 the "robot not connected" error frame that closes the socket.
 
 Fixes over the real backend:
@@ -137,7 +138,8 @@ async def map_ws(
 
     URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/map
 
-    Continuously streams the robot's map data at 10Hz to connected clients.
+    Streams the full map at 2Hz to connected clients. Map updates are large,
+    while robot pose remains available at 10Hz over the odometry socket.
     Returns robot status and current map when available.
 
     Args:
@@ -150,7 +152,7 @@ async def map_ws(
     Raises:
         HTTPException: If robot is not connected
     """
-    await _stream_topic(websocket, robot_id, "map", "map", "subscribe_map", 0.1)
+    await _stream_topic(websocket, robot_id, "map", "map", "subscribe_map", 0.5)
 
 
 @router.websocket("/{robot_id}/ws/subscribe/odom")

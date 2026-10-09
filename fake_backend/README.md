@@ -142,11 +142,12 @@ as ground truth to compare the dashboard's SLAM view against.
 | --- | --- | --- |
 | `odom`, `tf` | 20 Hz | 10 Hz |
 | `diagnostics`, `path` | 2 Hz | 2 Hz |
-| `map` | 5 Hz | 10 Hz |
+| `map` | 5 Hz | 2 Hz |
 | `imu`, `battery_state`, `point_cloud`, compressed images | on demand (`/sim/.../telemetry/{topic}`) | not exposed by the real API either |
 
-The map frame is a full 320 × 200 grid (~250 KB of JSON) at 10 Hz, because that
-is what the real backend streams. Every other topic is a few kB.
+The map frame is a full 320 × 200 grid (~250 KB of JSON), so its WebSocket
+stream is deliberately limited to 2 Hz. Odom and transforms stay at 10 Hz for
+responsive robot movement. Every other topic is a few kB.
 
 ---
 
@@ -425,6 +426,6 @@ fake_backend/
   `/sim/robots/amr_1/map.png?source=world` (same orientation as the UI) to see it.
 * `POST /dashboard/{robot_id}/start` 404s: the real backend never mounts that
   router, and neither does this one.
-* The real backend's `/map` stream is a full grid at 10 Hz; on a slow machine the
-  browser tab — not the backend — is the bottleneck. Lower `FAKE_MAP_RESOLUTION`
-  or shrink `FAKE_WORLD_*` if needed.
+* The `/map` stream sends a full grid at 2 Hz to keep browser parsing and
+  rendering responsive. Lower `FAKE_MAP_RESOLUTION` or shrink `FAKE_WORLD_*`
+  for slower machines.

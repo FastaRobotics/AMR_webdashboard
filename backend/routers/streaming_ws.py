@@ -17,7 +17,8 @@ async def map_ws(
     
     URL: ws://localhost:8000/streaming_socket/{robot_id}/ws/subscribe/map
     
-    Continuously streams the robot's map data at 10Hz to connected clients.
+    Streams the full map at 2Hz to connected clients. Map updates are large,
+    while robot pose remains available at 10Hz over the odometry socket.
     Returns robot status and current map when available.
     
     Args:
@@ -48,7 +49,7 @@ async def map_ws(
             }
 
             await websocket.send_json(data)
-            await asyncio.sleep(0.1)  # 10Hz stream
+            await asyncio.sleep(0.5)  # 2Hz: occupancy grids are large payloads
 
     except WebSocketDisconnect:
         print(f"{robot_id} websocket disconnected")
