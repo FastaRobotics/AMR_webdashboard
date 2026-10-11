@@ -1,222 +1,41 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from ros_bridge.publisher import RosPublisher
-from ros_bridge.subscriber import RosSubscriber
-from ros_bridge.publisher_available import TOPIC_MESSAGE_TYPES
-from ros_bridge.subscriber_available import SUBSCRIBABLE_TOPIC_MESSAGE_TYPES 
+import asyncio
 
-from msgs.String import StringMessageRequest 
-from msgs.Twist import TwistMessageRequest
-from msgs.Pose import PoseMessageRequest
-from msgs.Odom import OdomMessageRequest 
-from msgs.Transformation import TfMessageRequest
-from msgs.GoalPose import GoalPoseMessageRequest
+from routers.users import router as users_router
+from routers.mapping import router as mapping_router
+from routers.navigation import router as navigation_router
+from routers.connection import router as connection_router
+from routers.streaming_ws import router as streaming_ws_router
+from routers.streaming import router as streaming_router, shutdown_webrtc
+from routers.record import router as record_router
+from routers.control import router as control_router
 
-from roslibpy import Ros
-from ros_process_manager import RosProcessManager
+app = FastAPI(
+    title="Fasta Web Dashboard API",
+    description="API for managing Fasta robots (AMR and Quadruped), including connection, mapping, exploring, and navigation services.",
+    version="1.0.0",
+)
 
-# Create ONE shared connection instance
-ros = Ros(host='192.168.0.224', port=9090)
-ros.run()
-ros_processor = RosProcessManager()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-if not ros.is_connected:
-    raise Exception("[ROS Bridge] Failed to connect to ROS bridge")
+app.include_router(users_router)
+app.include_router(mapping_router)
+app.include_router(navigation_router)
+app.include_router(connection_router)
+app.include_router(streaming_ws_router)
+app.include_router(streaming_router)
+app.include_router(record_router)
+app.include_router(control_router)
 
-print("[ROS Bridge] Connected to ROS at ws://192.168.0.224:9090")
+@app.on_event("shutdown")
+async def shutdown_event():
+    await shutdown_webrtc()
 
-publishers = {}
-subscribers = {}
-app = FastAPI()
-
-# Publishers API 
-@app.post("/publish/string")
-async def publish_string(req: StringMessageRequest):
-    topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "std_msgs/String")
-
-    if topic not in publishers:
-        publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
-
-    try:
-        publishers[topic].publish_once({"data": req.data})
-        publishers[topic].close()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {"status": "published", 
-            "topic": topic, 
-            "type": msg_type, 
-            "data": req.data}
-
-
-@app.post("/publish/twist")
-async def publish_twist(req: TwistMessageRequest):
-    topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Twist")
-
-    if topic not in publishers:
-        publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
-
-    twist_msg = {
-        "linear": req.linear,
-        "angular": req.angular
-    }
-
-    try:
-        publishers[topic].publish_once(twist_msg)
-        publishers[topic].close()
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {"status": "published", 
-            "topic": topic,
-            "type": msg_type, 
-            "message": twist_msg}
-
-@app.post("/publish/pose")
-async def publish_pose(req: PoseMessageRequest):
-    topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/Pose")
-
-    if topic not in publishers:
-        publishers[topic] = RosPublisher(ros=ros, topic_name=topic, message_type=msg_type)
-
-    pose_msg = {
-        "position": req.position,
-        "orientation": req.orientation
-    }
-
-    try:
-        publishers[topic].publish_once(pose_msg)
-        publishers[topic].close()
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {
-        "status": "published",
-        "topic": topic,
-        "type": msg_type,
-        "message": pose_msg
-    }
-
-@app.post("/publish/goal_pose")
-async def publish_goal_pose(req: GoalPoseMessageRequest):
-    topic = req.topic
-    msg_type = req.type or TOPIC_MESSAGE_TYPES.get(topic, "geometry_msgs/PoseStamped")
-
-    if topic not in publishers:
-        publishers[topic] = RosPublisher(
-            ros=ros, topic_name=topic, message_type=msg_type)
-
-    pose_msg = {
-        "header": {
-            "frame_id": req.header.frame_id,
-            "stamp": req.header.stamp
-        },
-        "pose": {
-            "position": {
-                "x": req.pose.position.x,
-                "y": req.pose.position.y,
-                "z": req.pose.position.z
-            },
-            "orientation": {
-                "x": req.pose.orientation.x,
-                "y": req.pose.orientation.y,
-                "z": req.pose.orientation.z,
-                "w": req.pose.orientation.w
-            }
-        }
-    }
-
-    try:
-        publishers[topic].publish_once(pose_msg)
-        publishers[topic].close()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {
-        "status": "published",
-        "topic": topic,
-        "type": msg_type,
-        "message": pose_msg
-    }
-
-
-# Subscribers API 
-@app.post("/subscribe/odom")
-async def get_odom(req: OdomMessageRequest):
-    topic = req.topic
-    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "nav_msgs/Odometry")
-
-    if topic not in subscribers:
-        subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
-        subscriber.subscribe()
-        subscribers[topic] = subscriber
-
-    try:
-        odom_msg = subscribers[topic].get_last_message()
-        # subscribers[topic].unsubscribe()
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {
-        "status": "subscribed",
-        "topic": topic,
-        "type": msg_type,
-        "message": odom_msg
-    }
-
-@app.post("/subscribe/tf")
-async def get_tf(req: TfMessageRequest):
-    topic = req.topic
-    msg_type = req.type or SUBSCRIBABLE_TOPIC_MESSAGE_TYPES.get(topic, "tf2_msgs/TFMessage")
-
-    if topic not in subscribers:
-        subscriber = RosSubscriber(ros=ros, topic_name=topic, message_type=msg_type)
-        subscriber.subscribe()
-        subscribers[topic] = subscriber
-
-    try:
-        odom_msg = subscribers[topic].get_last_message()
-        # subscribers[topic].unsubscribe()
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {
-        "status": "subscribed",
-        "topic": topic,
-        "type": msg_type,
-        "message": odom_msg
-    }
-
-# Mapping and navigation
-@app.post("/start/mapping")
-def start_mapping():
-    ros_processor.start_mapping()
-    return {"status": "mapping started"}
-
-@app.post("/stop/mapping")
-def stop_mapping():
-    ros_processor.stop_mapping()
-    return {"status": "mapping stopped"}
-
-@app.post("/start/navigation")
-def start_navigation():
-    ros_processor.start_navigation()
-    return {"status": "navigation started"}
-
-@app.post("/stop/navigation")
-def stop_navigation():
-    ros_processor.stop_navigation()
-    return {"status": "navigation stopped"}
-
-@app.get("/status")
-def get_status():
-    status = ros_processor.status() 
-    status["connection"] = ros.is_connected
-    return status

@@ -1,0 +1,4 @@
+# Optional: WebRTC signalling for /streaming/offer/client, /streaming/offer/browser
+# and the /streaming/viewer page. Without it those endpoints answer 501 and the
+# rest of the API (including every WebSocket the dashboard uses) is unaffected.
+aiortc>=1.9

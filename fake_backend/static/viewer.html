@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fake backend — WebRTC viewer</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #10141b;
+        color: #e6edf3;
+        font: 14px/1.5 ui-sans-serif, system-ui, sans-serif;
+      }
+      h1 {
+        font-size: 18px;
+        margin: 0 0 4px;
+      }
+      p.hint {
+        color: #8b98a9;
+        margin: 0 0 16px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+      }
+      input {
+        background: #0b0f14;
+        border: 1px solid #2a3442;
+        color: inherit;
+        padding: 8px 10px;
+        border-radius: 6px;
+        min-width: 320px;
+        flex: 1;
+      }
+      button {
+        background: #1f6feb;
+        border: 0;
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #2a3442;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      video {
+        width: 100%;
+        max-width: 960px;
+        background: #000;
+        border: 1px solid #2a3442;
+        border-radius: 8px;
+        aspect-ratio: 16 / 9;
+      }
+      pre {
+        background: #0b0f14;
+        border: 1px solid #2a3442;
+        border-radius: 8px;
+        padding: 12px;
+        max-width: 960px;
+        overflow: auto;
+        font-size: 12px;
+      }
+      code {
+        color: #7ee787;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Fake backend — WebRTC viewer</h1>
+    <p class="hint">
+      Served by <code>GET /streaming/viewer</code>. It negotiates through
+      <code>POST /streaming/offer/browser</code> and plays the synthetic camera
+      track the fake backend exposes as a relay source.
+    </p>
+
+    <div class="row">
+      <input id="token" placeholder="JWT access token (from POST /user/login)" />
+      <button id="login" class="secondary">Get token</button>
+      <button id="connect">Connect</button>
+      <button id="stop" class="secondary" disabled>Stop</button>
+    </div>
+
+    <video id="video" autoplay playsinline muted></video>
+    <pre id="log">ready.</pre>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const tokenInput = document.getElementById("token");
+      const logEl = document.getElementById("log");
+      const video = document.getElementById("video");
+      const connectBtn = document.getElementById("connect");
+      const stopBtn = document.getElementById("stop");
+      const loginBtn = document.getElementById("login");
+
+      let pc = null;
+      let user = params.get("user") || "admin";
+      let password = params.get("password") || "admin123";
+
+      if (params.get("token")) tokenInput.value = params.get("token");
+
+      const log = (message) => {
+        logEl.textContent = `${new Date().toLocaleTimeString()}  ${message}\n` + logEl.textContent;
+      };
+
+      const api = (path) => `${location.protocol}//${location.host}${path}`;
+
+      async function getToken() {
+        const response = await fetch(api("/user/login"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_name: user, password }),
+        });
+        if (!response.ok) throw new Error(`login failed: ${response.status}`);
+        const data = await response.json();
+        tokenInput.value = data.access_token;
+        log(`token acquired for '${user}' (${data.token_type})`);
+      }
+
+      loginBtn.onclick = async () => {
+        try {
+          if (!tokenInput.value) await getToken();
+          else log("token already present");
+        } catch (error) {
+          log(String(error));
+        }
+      };
+
+      async function connect() {
+        connectBtn.disabled = true;
+        stopBtn.disabled = false;
+        try {
+          if (!tokenInput.value) await getToken();
+
+          const status = await fetch(api("/streaming/status"), {
+            headers: { Authorization: `Bearer ${tokenInput.value}` },
+          }).then((r) => r.json());
+          log(`server sources: ${status.source_tracks}, pcs: ${status.total_pcs}`);
+
+          pc = new RTCPeerConnection();
+          pc.addTransceiver("video", { direction: "recvonly" });
+
+          pc.ontrack = (event) => {
+            video.srcObject = event.streams[0] || new MediaStream([event.track]);
+            log(`track received: ${event.track.kind}`);
+          };
+          pc.onconnectionstatechange = () => log(`pc state: ${pc.connectionState}`);
+
+          await pc.setLocalDescription(await pc.createOffer());
+
+          const response = await fetch(api("/streaming/offer/browser"), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${tokenInput.value}`,
+            },
+            body: JSON.stringify({ sdp: pc.localDescription.sdp, type: pc.localDescription.type }),
+          });
+
+          if (!response.ok) throw new Error(`offer failed: ${response.status}`);
+          const answer = await response.json();
+          log(`answer received (track_count=${answer.track_count ?? "?"})`);
+          await pc.setRemoteDescription({ sdp: answer.sdp, type: answer.type });
+        } catch (error) {
+          log(`error: ${error}`);
+          connectBtn.disabled = false;
+          stopBtn.disabled = true;
+        }
+      }
+
+      function stop() {
+        if (pc) {
+          pc.close();
+          pc = null;
+        }
+        video.srcObject = null;
+        connectBtn.disabled = false;
+        stopBtn.disabled = true;
+        log("stopped");
+      }
+
+      connectBtn.onclick = connect;
+      stopBtn.onclick = stop;
+    </script>
+  </body>
+</html>
